@@ -1,0 +1,2 @@
+-- Row Level Security (RLS) policy definitions.
+-- Applied to all user-owned tables and tied to auth.uid().

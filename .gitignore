@@ -1,0 +1,44 @@
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+build/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+*.log
+
+# ---- Docker ----
+docker-data/
+
+# ---- Misc ----
+dist/
+tmp/
+*.local

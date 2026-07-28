@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — dark-first, minimalistic.
+ * Single source of truth for color/typography. Never use ad-hoc hex values.
+ */
+:root {
+  /* Surfaces */
+  --bg: #0a0a0b; /* app background (near-black) */
+  --surface: #141416; /* cards / panels */
+  --surface-2: #1c1c1f; /* raised / hover */
+  --border: #26262a; /* hairline dividers */
+
+  /* Text */
+  --text: #ededed; /* primary text */
+  --text-muted: #a1a1aa; /* secondary text */
+
+  /* Accent + semantic financial colors */
+  --accent: #3b82f6; /* primary action / links */
+  --positive: #22c55e; /* gains / undervalued / BUY */
+  --negative: #ef4444; /* losses / overvalued / SELL */
+  --warning: #f59e0b; /* hold / caution */
+}
+
+/* Optional light theme (secondary). Applied via .light on <html>. */
+.light {
+  --bg: #ffffff;
+  --surface: #f6f6f7;
+  --surface-2: #ececed;
+  --border: #e2e2e6;
+  --text: #171717;
+  --text-muted: #52525b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  /* Tabular figures so financial numbers align in columns. */
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

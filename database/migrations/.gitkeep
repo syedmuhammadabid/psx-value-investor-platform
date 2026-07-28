@@ -1,0 +1,2 @@
+# Migrations are managed by Alembic in backend/alembic/versions.
+# This directory holds any raw SQL migrations if needed.
