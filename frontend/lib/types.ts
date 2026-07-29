@@ -425,3 +425,37 @@ export interface DataQualityReport {
   staleness_days: number | null;
   sources: DataSourceInfo[];
 }
+
+/** The authenticated user's profile. */
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  created_at: string;
+}
+
+/** A freshly issued access token. */
+export interface AuthToken {
+  access_token: string;
+  token_type: string;
+}
+
+/** A watchlist entry enriched with a light company snapshot. */
+export interface WatchlistItem {
+  symbol: string;
+  name: string | null;
+  sector: string | null;
+  current_price: number | null;
+  intrinsic_value: number | null;
+  discount: number | null;
+  recommendation: Recommendation | null;
+  added_at: string;
+}
+
+/** An alert subscription enriched with the company's active signals. */
+export interface AlertSubscription {
+  symbol: string;
+  name: string | null;
+  subscribed_at: string;
+  alerts: AlertSignal[];
+}

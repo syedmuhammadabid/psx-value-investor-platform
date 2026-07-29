@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = Field(default="change-me-in-production", min_length=8)
 
+    # Auth (self-contained JWT)
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24
+
     # API
     api_v1_prefix: str = "/api/v1"
     project_name: str = "PSX Value Investor Platform API"

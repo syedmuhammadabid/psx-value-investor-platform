@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AlertsView } from "@/components/AlertsView";
 import { AssistantView } from "@/components/AssistantView";
 import { BuySellZonesView } from "@/components/BuySellZonesView";
+import { CompanyActions } from "@/components/CompanyActions";
 import { DataQualityView } from "@/components/DataQualityView";
 import { FinancialCharts } from "@/components/FinancialCharts";
 import { FinancialRatiosView } from "@/components/FinancialRatios";
@@ -163,6 +164,7 @@ export default async function CompanyPage({
             {[company.sector, company.industry].filter(Boolean).join(" · ") ||
               "—"}
           </p>
+          <CompanyActions symbol={company.symbol} />
         </div>
         <div className="text-right">
           <div className="text-2xl font-semibold text-text">

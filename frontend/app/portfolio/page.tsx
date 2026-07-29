@@ -10,6 +10,12 @@ import {
 } from "react";
 
 import { analyzePortfolio, ApiError } from "@/lib/api";
+import {
+  getPortfolio,
+  removePosition,
+  upsertPosition,
+  useAuth,
+} from "@/lib/auth";
 import { compact, formatPrice } from "@/lib/format";
 import type {
   HoldingAnalysis,
@@ -219,7 +225,10 @@ function HoldingsTable({
 }
 
 export default function PortfolioPage() {
-  const holdings = useSyncExternalStore(
+  const { token, status } = useAuth();
+  const authed = status === "ready" && Boolean(token);
+
+  const localHoldings = useSyncExternalStore(
     subscribeHoldings,
     readHoldings,
     () => EMPTY_HOLDINGS
@@ -232,15 +241,22 @@ export default function PortfolioPage() {
   const [quantity, setQuantity] = useState("");
   const [averageCost, setAverageCost] = useState("");
 
-  // Re-analyse whenever holdings change.
+  // Load the persisted portfolio when logged in, or re-analyse the local
+  // holdings otherwise. Runs whenever the auth or local holdings change.
   useEffect(() => {
-    if (holdings.length === 0) return;
+    if (status !== "ready") return;
     let cancelled = false;
     const run = async () => {
+      if (!token && localHoldings.length === 0) {
+        setAnalysis(null);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const result = await analyzePortfolio(holdings);
+        const result = token
+          ? await getPortfolio()
+          : await analyzePortfolio(localHoldings);
         if (!cancelled) setAnalysis(result);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -258,10 +274,10 @@ export default function PortfolioPage() {
     return () => {
       cancelled = true;
     };
-  }, [holdings]);
+  }, [token, status, localHoldings]);
 
   const addHolding = useCallback(
-    (event: React.FormEvent) => {
+    async (event: React.FormEvent) => {
       event.preventDefault();
       const cleanSymbol = symbol.trim().toUpperCase();
       const qty = Number(quantity);
@@ -269,48 +285,74 @@ export default function PortfolioPage() {
       if (!cleanSymbol || !Number.isFinite(qty) || qty <= 0) return;
       if (!Number.isFinite(cost) || cost < 0) return;
 
-      const existing = holdings.find((h) => h.symbol === cleanSymbol);
-      if (existing) {
-        // Merge into a weighted-average position.
-        const totalQty = existing.quantity + qty;
-        const totalCost =
-          existing.quantity * existing.average_cost + qty * cost;
-        writeHoldings(
-          holdings.map((h) =>
-            h.symbol === cleanSymbol
-              ? {
-                  symbol: cleanSymbol,
-                  quantity: totalQty,
-                  average_cost: totalCost / totalQty,
-                }
-              : h
-          )
-        );
+      if (authed) {
+        setError(null);
+        try {
+          const result = await upsertPosition(cleanSymbol, qty, cost);
+          setAnalysis(result);
+        } catch (err: unknown) {
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "Unable to save this position."
+          );
+          return;
+        }
       } else {
-        writeHoldings([
-          ...holdings,
-          { symbol: cleanSymbol, quantity: qty, average_cost: cost },
-        ]);
+        const existing = localHoldings.find((h) => h.symbol === cleanSymbol);
+        if (existing) {
+          // Merge into a weighted-average position.
+          const totalQty = existing.quantity + qty;
+          const totalCost =
+            existing.quantity * existing.average_cost + qty * cost;
+          writeHoldings(
+            localHoldings.map((h) =>
+              h.symbol === cleanSymbol
+                ? {
+                    symbol: cleanSymbol,
+                    quantity: totalQty,
+                    average_cost: totalCost / totalQty,
+                  }
+                : h
+            )
+          );
+        } else {
+          writeHoldings([
+            ...localHoldings,
+            { symbol: cleanSymbol, quantity: qty, average_cost: cost },
+          ]);
+        }
       }
       setSymbol("");
       setQuantity("");
       setAverageCost("");
     },
-    [symbol, quantity, averageCost, holdings]
+    [symbol, quantity, averageCost, localHoldings, authed]
   );
 
   const removeHolding = useCallback(
-    (target: string) => {
-      writeHoldings(holdings.filter((h) => h.symbol !== target));
+    async (target: string) => {
+      if (authed) {
+        setError(null);
+        try {
+          const result = await removePosition(target);
+          setAnalysis(result);
+        } catch (err: unknown) {
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "Unable to remove this position."
+          );
+        }
+      } else {
+        writeHoldings(localHoldings.filter((h) => h.symbol !== target));
+      }
     },
-    [holdings]
+    [localHoldings, authed]
   );
 
-  const summary = holdings.length > 0 ? analysis?.summary : undefined;
-  const holdingRows = useMemo(
-    () => (holdings.length > 0 ? (analysis?.holdings ?? []) : []),
-    [analysis, holdings]
-  );
+  const holdingRows = useMemo(() => analysis?.holdings ?? [], [analysis]);
+  const summary = holdingRows.length > 0 ? analysis?.summary : undefined;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-12">
@@ -325,8 +367,10 @@ export default function PortfolioPage() {
         <h1 className="text-3xl font-semibold text-text">Portfolio tracker</h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Add your holdings to see gain/loss, margin of safety against intrinsic
-          value, expected CAGR, and an overall portfolio health score. Your
-          holdings stay in this browser only.
+          value, expected CAGR, and an overall portfolio health score.{" "}
+          {authed
+            ? "Your holdings are saved to your account."
+            : "Your holdings stay in this browser only — log in to save them."}
         </p>
       </header>
 
@@ -399,7 +443,7 @@ export default function PortfolioPage() {
         </p>
       ) : null}
 
-      {holdings.length === 0 ? (
+      {holdingRows.length === 0 && !loading ? (
         <p className="mt-10 text-sm text-text-muted">
           No holdings yet. Add a position above to build your portfolio.
         </p>

@@ -70,3 +70,13 @@ class PortfolioAnalysis(BaseModel):
     currency: str = "PKR"
     summary: PortfolioSummary
     holdings: list[HoldingAnalysis]
+
+
+class PositionUpsert(BaseModel):
+    """Add or update a persisted portfolio position for the current user."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    symbol: str = Field(min_length=1, max_length=20)
+    quantity: float = Field(gt=0, description="Number of shares held.")
+    average_cost: float = Field(ge=0, description="Average purchase price per share (PKR).")

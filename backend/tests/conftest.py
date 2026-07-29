@@ -99,3 +99,26 @@ def seed_companies(db_session: Session) -> list[Company]:
     db_session.add_all(companies)
     db_session.commit()
     return companies
+
+
+def register_user(
+    client: TestClient,
+    *,
+    email: str = "investor@example.com",
+    password: str = "s3cret-pass",
+    full_name: str | None = "Test Investor",
+) -> dict[str, str]:
+    """Register a user and return an Authorization header for them."""
+    response = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "full_name": full_name},
+    )
+    assert response.status_code == 201, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers(client: TestClient) -> dict[str, str]:
+    """A bearer-token header for a freshly registered primary user."""
+    return register_user(client)
