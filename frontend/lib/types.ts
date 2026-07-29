@@ -340,3 +340,64 @@ export interface AlertReport {
   currency: string;
   alerts: AlertSignal[];
 }
+
+/** A deterministic answer composed from a company's computed data. */
+export interface AssistantAnswer {
+  symbol: string;
+  question: string;
+  intent: string;
+  answer: string;
+  highlights: string[];
+  recommendation: Recommendation;
+  disclaimer: string;
+}
+
+export type ScoreRating = "excellent" | "good" | "fair" | "weak" | "na";
+
+/** A single pass/fail criterion behind a score (`passed` null == no data). */
+export interface ScoreCheck {
+  label: string;
+  detail: string;
+  passed: boolean | null;
+}
+
+/** A 0-100 composite score with its underlying checks. */
+export interface CompositeScore {
+  key: string;
+  label: string;
+  value: number | null;
+  rating: ScoreRating;
+  checks: ScoreCheck[];
+}
+
+/** The Piotroski F-Score (0-9) with its nine checks. */
+export interface PiotroskiScore {
+  value: number | null;
+  max_score: number;
+  rating: string;
+  checks: ScoreCheck[];
+}
+
+/** The Altman Z-Score with its distress band. */
+export interface AltmanScore {
+  value: number | null;
+  band: string;
+  detail: string;
+}
+
+/** The two Magic Formula components, each as a percentage. */
+export interface MagicFormula {
+  roic: number | null;
+  earnings_yield: number | null;
+  detail: string;
+}
+
+/** The full investment scorecard for a company. */
+export interface CompanyScores {
+  symbol: string;
+  currency: string;
+  composites: CompositeScore[];
+  piotroski: PiotroskiScore;
+  altman_z: AltmanScore;
+  magic_formula: MagicFormula;
+}

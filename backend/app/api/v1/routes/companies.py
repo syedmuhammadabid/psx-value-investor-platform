@@ -11,20 +11,24 @@ from app.core.database import get_db
 from app.models.financial_statement import PeriodType
 from app.repositories.company import CompanySort
 from app.schemas.alerts import AlertReport
+from app.schemas.assistant import AssistantAnswer, AssistantRequest
 from app.schemas.company import CompanyDetail, CompanySummary
 from app.schemas.financials import FinancialStatements
 from app.schemas.history import CompanyHistory
 from app.schemas.pagination import Page
 from app.schemas.ratios import FinancialRatios
 from app.schemas.recommendation import RecommendationReport
+from app.schemas.scores import CompanyScores
 from app.schemas.valuation import Valuation
 from app.schemas.zones import BuySellZones
 from app.services import alerts as alerts_service
+from app.services import assistant as assistant_service
 from app.services import company as service
 from app.services import financials as financials_service
 from app.services import history as history_service
 from app.services import ratios as ratios_service
 from app.services import recommendation as recommendation_service
+from app.services import scores as scores_service
 from app.services import valuation as valuation_service
 from app.services import zones as zones_service
 
@@ -103,3 +107,19 @@ def get_recommendation(
 def get_alerts(symbol: str, db: Annotated[Session, Depends(get_db)]) -> AlertReport:
     """Return the alert conditions currently active for a company."""
     return alerts_service.get_alerts(db, symbol)
+
+
+@router.get("/{symbol}/scores", response_model=CompanyScores)
+def get_scores(symbol: str, db: Annotated[Session, Depends(get_db)]) -> CompanyScores:
+    """Return the investment scorecard (health, Buffett, Graham, Piotroski, etc.)."""
+    return scores_service.get_scores(db, symbol)
+
+
+@router.post("/{symbol}/assistant", response_model=AssistantAnswer)
+def ask_assistant(
+    symbol: str,
+    request: AssistantRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> AssistantAnswer:
+    """Answer a natural-language question about a company from its computed data."""
+    return assistant_service.ask(db, symbol, request.question)

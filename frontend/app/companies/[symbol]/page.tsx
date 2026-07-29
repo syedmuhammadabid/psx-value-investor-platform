@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AlertsView } from "@/components/AlertsView";
+import { AssistantView } from "@/components/AssistantView";
 import { BuySellZonesView } from "@/components/BuySellZonesView";
 import { FinancialCharts } from "@/components/FinancialCharts";
 import { FinancialRatiosView } from "@/components/FinancialRatios";
 import { FinancialStatementsView } from "@/components/FinancialStatements";
 import { RecommendationView } from "@/components/RecommendationView";
+import { ScoresView } from "@/components/ScoresView";
 import { ValuationView } from "@/components/ValuationView";
 import {
   ApiError,
@@ -16,6 +18,7 @@ import {
   getHistory,
   getRatios,
   getRecommendation,
+  getScores,
   getValuation,
   getZones,
 } from "@/lib/api";
@@ -25,6 +28,7 @@ import type {
   BuySellZones,
   CompanyDetail,
   CompanyHistory,
+  CompanyScores,
   FinancialRatios,
   FinancialStatements,
   PeriodType,
@@ -121,6 +125,13 @@ export default async function CompanyPage({
     alerts = null;
   }
 
+  let scores: CompanyScores | null = null;
+  try {
+    scores = await getScores(company.symbol);
+  } catch {
+    scores = null;
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12">
       <Link
@@ -197,7 +208,11 @@ export default async function CompanyPage({
         <RecommendationView recommendation={recommendation} />
       ) : null}
 
+      {scores ? <ScoresView scores={scores} /> : null}
+
       {alerts ? <AlertsView report={alerts} /> : null}
+
+      <AssistantView symbol={company.symbol} />
 
       {ratios ? <FinancialRatiosView ratios={ratios} /> : null}
 

@@ -6,9 +6,11 @@
  */
 import type {
   AlertReport,
+  AssistantAnswer,
   BuySellZones,
   CompanyDetail,
   CompanyHistory,
+  CompanyScores,
   CompanySort,
   CompanySummary,
   FinancialRatios,
@@ -155,6 +157,27 @@ export function analyzePortfolio(
 export function getAlerts(symbol: string): Promise<AlertReport> {
   return apiFetch<AlertReport>(
     `/companies/${encodeURIComponent(symbol)}/alerts`
+  );
+}
+
+export function getScores(symbol: string): Promise<CompanyScores> {
+  return apiFetch<CompanyScores>(
+    `/companies/${encodeURIComponent(symbol)}/scores`
+  );
+}
+
+export function askAssistant(
+  symbol: string,
+  question: string
+): Promise<AssistantAnswer> {
+  return apiFetch<AssistantAnswer>(
+    `/companies/${encodeURIComponent(symbol)}/assistant`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ question }),
+    }
   );
 }
 
