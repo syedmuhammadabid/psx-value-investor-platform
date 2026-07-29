@@ -5,6 +5,8 @@
  * failure so callers can render sensible error states.
  */
 import type {
+  AlertReport,
+  BuySellZones,
   CompanyDetail,
   CompanyHistory,
   CompanySort,
@@ -13,7 +15,11 @@ import type {
   FinancialStatements,
   Page,
   PeriodType,
+  PortfolioAnalysis,
+  PortfolioHolding,
+  RecommendationReport,
   ScreenerResult,
+  Valuation,
 } from "./types";
 
 const API_BASE_URL =
@@ -112,6 +118,43 @@ export function getHistory(
   const search = new URLSearchParams({ limit: String(limit) });
   return apiFetch<CompanyHistory>(
     `/companies/${encodeURIComponent(symbol)}/history?${search.toString()}`
+  );
+}
+
+export function getValuation(symbol: string): Promise<Valuation> {
+  return apiFetch<Valuation>(
+    `/companies/${encodeURIComponent(symbol)}/valuation`
+  );
+}
+
+export function getZones(symbol: string): Promise<BuySellZones> {
+  return apiFetch<BuySellZones>(
+    `/companies/${encodeURIComponent(symbol)}/zones`
+  );
+}
+
+export function getRecommendation(
+  symbol: string
+): Promise<RecommendationReport> {
+  return apiFetch<RecommendationReport>(
+    `/companies/${encodeURIComponent(symbol)}/recommendation`
+  );
+}
+
+export function analyzePortfolio(
+  holdings: PortfolioHolding[]
+): Promise<PortfolioAnalysis> {
+  return apiFetch<PortfolioAnalysis>(`/portfolio/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ holdings }),
+  });
+}
+
+export function getAlerts(symbol: string): Promise<AlertReport> {
+  return apiFetch<AlertReport>(
+    `/companies/${encodeURIComponent(symbol)}/alerts`
   );
 }
 

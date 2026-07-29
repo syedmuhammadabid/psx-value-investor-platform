@@ -49,6 +49,12 @@ export default function Home() {
         >
           Stock screener
         </Link>
+        <Link
+          href="/portfolio"
+          className="rounded-md border border-border px-5 py-3 text-sm font-semibold text-text transition-colors hover:bg-surface-2"
+        >
+          Portfolio tracker
+        </Link>
       </div>
 
       <section

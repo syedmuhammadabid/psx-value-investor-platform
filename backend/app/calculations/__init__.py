@@ -1,5 +1,5 @@
 """Pure, unit-tested financial calculations (ratios, growth, scores)."""
 
-from app.calculations import ratios
+from app.calculations import portfolio, ratios
 
-__all__ = ["ratios"]
+__all__ = ["portfolio", "ratios"]

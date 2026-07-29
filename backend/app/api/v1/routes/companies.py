@@ -10,15 +10,23 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.financial_statement import PeriodType
 from app.repositories.company import CompanySort
+from app.schemas.alerts import AlertReport
 from app.schemas.company import CompanyDetail, CompanySummary
 from app.schemas.financials import FinancialStatements
 from app.schemas.history import CompanyHistory
 from app.schemas.pagination import Page
 from app.schemas.ratios import FinancialRatios
+from app.schemas.recommendation import RecommendationReport
+from app.schemas.valuation import Valuation
+from app.schemas.zones import BuySellZones
+from app.services import alerts as alerts_service
 from app.services import company as service
 from app.services import financials as financials_service
 from app.services import history as history_service
 from app.services import ratios as ratios_service
+from app.services import recommendation as recommendation_service
+from app.services import valuation as valuation_service
+from app.services import zones as zones_service
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -69,3 +77,29 @@ def get_history(
 ) -> CompanyHistory:
     """Return a chart-ready annual metric series for a company (oldest first)."""
     return history_service.get_history(db, symbol, limit=limit)
+
+
+@router.get("/{symbol}/valuation", response_model=Valuation)
+def get_valuation(symbol: str, db: Annotated[Session, Depends(get_db)]) -> Valuation:
+    """Return a blended intrinsic value and recommendation for a company."""
+    return valuation_service.get_valuation(db, symbol)
+
+
+@router.get("/{symbol}/zones", response_model=BuySellZones)
+def get_zones(symbol: str, db: Annotated[Session, Depends(get_db)]) -> BuySellZones:
+    """Return buy/sell price bands derived from the intrinsic value."""
+    return zones_service.get_zones(db, symbol)
+
+
+@router.get("/{symbol}/recommendation", response_model=RecommendationReport)
+def get_recommendation(
+    symbol: str, db: Annotated[Session, Depends(get_db)]
+) -> RecommendationReport:
+    """Return the BUY/HOLD/SELL call with the explainable reasons behind it."""
+    return recommendation_service.get_recommendation(db, symbol)
+
+
+@router.get("/{symbol}/alerts", response_model=AlertReport)
+def get_alerts(symbol: str, db: Annotated[Session, Depends(get_db)]) -> AlertReport:
+    """Return the alert conditions currently active for a company."""
+    return alerts_service.get_alerts(db, symbol)

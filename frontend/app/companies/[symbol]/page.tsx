@@ -1,23 +1,35 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AlertsView } from "@/components/AlertsView";
+import { BuySellZonesView } from "@/components/BuySellZonesView";
 import { FinancialCharts } from "@/components/FinancialCharts";
 import { FinancialRatiosView } from "@/components/FinancialRatios";
 import { FinancialStatementsView } from "@/components/FinancialStatements";
+import { RecommendationView } from "@/components/RecommendationView";
+import { ValuationView } from "@/components/ValuationView";
 import {
   ApiError,
+  getAlerts,
   getCompany,
   getFinancials,
   getHistory,
   getRatios,
+  getRecommendation,
+  getValuation,
+  getZones,
 } from "@/lib/api";
 import { formatMarketCap, formatPercent, formatPrice } from "@/lib/format";
 import type {
+  AlertReport,
+  BuySellZones,
   CompanyDetail,
   CompanyHistory,
   FinancialRatios,
   FinancialStatements,
   PeriodType,
+  RecommendationReport,
+  Valuation,
 } from "@/lib/types";
 
 interface CompanyPageProps {
@@ -79,6 +91,34 @@ export default async function CompanyPage({
     history = await getHistory(company.symbol, 10);
   } catch {
     history = null;
+  }
+
+  let valuation: Valuation | null = null;
+  try {
+    valuation = await getValuation(company.symbol);
+  } catch {
+    valuation = null;
+  }
+
+  let zones: BuySellZones | null = null;
+  try {
+    zones = await getZones(company.symbol);
+  } catch {
+    zones = null;
+  }
+
+  let recommendation: RecommendationReport | null = null;
+  try {
+    recommendation = await getRecommendation(company.symbol);
+  } catch {
+    recommendation = null;
+  }
+
+  let alerts: AlertReport | null = null;
+  try {
+    alerts = await getAlerts(company.symbol);
+  } catch {
+    alerts = null;
   }
 
   return (
@@ -148,6 +188,16 @@ export default async function CompanyPage({
           Visit company website ↗
         </a>
       ) : null}
+
+      {valuation ? <ValuationView valuation={valuation} /> : null}
+
+      {zones ? <BuySellZonesView zones={zones} /> : null}
+
+      {recommendation ? (
+        <RecommendationView recommendation={recommendation} />
+      ) : null}
+
+      {alerts ? <AlertsView report={alerts} /> : null}
 
       {ratios ? <FinancialRatiosView ratios={ratios} /> : null}
 

@@ -196,3 +196,147 @@ export interface ScreenerResult {
   count: number;
   items: ScreenerRow[];
 }
+
+/** Headline recommendation derived from the discount to intrinsic value. */
+export type Recommendation = "BUY" | "HOLD" | "SELL";
+
+/** A single valuation model's per-share estimate and its blend weight. */
+export interface ValuationModelResult {
+  name: string;
+  value: number | null;
+  weight: number;
+  applied: boolean;
+}
+
+/** Key assumptions behind the valuation, surfaced for transparency. */
+export interface ValuationAssumptions {
+  discount_rate: number;
+  terminal_growth: number;
+  projection_years: number;
+}
+
+/**
+ * Blended intrinsic value and recommendation. Intrinsic value and current
+ * price are plain numbers (PKR); discount is a percentage (positive ==
+ * undervalued).
+ */
+export interface Valuation {
+  symbol: string;
+  currency: string;
+  intrinsic_value: number | null;
+  current_price: number | null;
+  discount: number | null;
+  recommendation: Recommendation;
+  models: ValuationModelResult[];
+  assumptions: ValuationAssumptions;
+}
+
+/** The five buy/sell price bands, cheapest to most expensive. */
+export type ZoneName = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
+
+/** A single price band with optional bounds (PKR). Nulls are unbounded. */
+export interface PriceZone {
+  name: ZoneName;
+  label: string;
+  lower: number | null;
+  upper: number | null;
+  is_current: boolean;
+}
+
+/** Price bands derived from a company's intrinsic value. */
+export interface BuySellZones {
+  symbol: string;
+  currency: string;
+  intrinsic_value: number | null;
+  current_price: number | null;
+  current_zone: ZoneName | null;
+  zones: PriceZone[];
+}
+
+/** Whether a reason supports, opposes, or is neutral toward the call. */
+export type Sentiment = "positive" | "negative" | "neutral";
+
+/** A single explainable factor behind the recommendation. */
+export interface RecommendationReason {
+  label: string;
+  detail: string;
+  sentiment: Sentiment;
+}
+
+/**
+ * The headline BUY/HOLD/SELL call plus the transparent reasons that justify
+ * it. Intrinsic value and current price are plain numbers (PKR); discount is a
+ * percentage (positive == undervalued).
+ */
+export interface RecommendationReport {
+  symbol: string;
+  recommendation: Recommendation;
+  summary: string;
+  intrinsic_value: number | null;
+  current_price: number | null;
+  discount: number | null;
+  reasons: RecommendationReason[];
+}
+
+/** A single position submitted for portfolio analysis. */
+export interface PortfolioHolding {
+  symbol: string;
+  quantity: number;
+  average_cost: number;
+}
+
+/** Computed analytics for one holding. Money figures are PKR; MoS/CAGR are %. */
+export interface HoldingAnalysis {
+  symbol: string;
+  name: string | null;
+  quantity: number;
+  average_cost: number;
+  current_price: number | null;
+  cost_basis: number;
+  market_value: number | null;
+  gain_loss: number | null;
+  gain_loss_pct: number | null;
+  intrinsic_value: number | null;
+  intrinsic_total: number | null;
+  margin_of_safety: number | null;
+  expected_cagr: number | null;
+  recommendation: Recommendation | null;
+  weight: number | null;
+}
+
+/** Portfolio-level roll-up across all holdings. */
+export interface PortfolioSummary {
+  holdings_count: number;
+  total_cost: number;
+  total_market_value: number | null;
+  total_gain_loss: number | null;
+  total_gain_loss_pct: number | null;
+  total_intrinsic_value: number | null;
+  margin_of_safety: number | null;
+  expected_cagr: number | null;
+  health_score: number | null;
+}
+
+/** The full stateless portfolio analysis response. */
+export interface PortfolioAnalysis {
+  currency: string;
+  summary: PortfolioSummary;
+  holdings: HoldingAnalysis[];
+}
+
+export type AlertSentiment = "positive" | "negative" | "neutral";
+
+/** A single alert condition currently active for a company. */
+export interface AlertSignal {
+  type: string;
+  title: string;
+  detail: string;
+  sentiment: AlertSentiment;
+}
+
+/** The set of alert conditions active for a company right now. */
+export interface AlertReport {
+  symbol: string;
+  currency: string;
+  alerts: AlertSignal[];
+}
