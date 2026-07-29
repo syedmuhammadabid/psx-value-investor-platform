@@ -5,6 +5,6 @@ instances (today from a local file adapter; a real HTTP/PDF scraper can be
 dropped in later without changing normalization, validation, or ingestion).
 """
 
-from app.scraper import normalize, validation
+from app.scraper import normalize, prices, validation
 
-__all__ = ["normalize", "validation"]
+__all__ = ["normalize", "prices", "validation"]

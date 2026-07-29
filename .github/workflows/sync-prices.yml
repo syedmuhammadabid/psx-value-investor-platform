@@ -1,0 +1,55 @@
+name: Sync PSX Prices
+
+# Refreshes company last-traded/closing prices from the public PSX market-data
+# snapshot (the same source psxworth publishes daily). Runs every weekday after
+# the PSX session closes so the latest available closing price is applied. The
+# sync is idempotent, so re-runs and manual triggers are safe.
+
+on:
+  schedule:
+    # 12:00 UTC = 17:00 PKT, Mon–Fri — after PSX close and the daily snapshot refresh.
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-prices
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # Set this repository secret to the production connection string
+      # (postgresql+psycopg://user:pass@host:5432/db).
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Optional override; falls back to the default public snapshot URL.
+      PSX_PRICE_SNAPSHOT_URL: ${{ vars.PSX_PRICE_SNAPSHOT_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Download market-data snapshot
+        run: |
+          url="${PSX_PRICE_SNAPSHOT_URL:-https://pub-63afb24e90e0481a85914526878c4913.r2.dev/latest.dmp}"
+          curl -sSL --fail -o "$RUNNER_TEMP/psx-data.dmp" "$url"
+
+      - name: Extract StocksPrices table (pg_restore 17)
+        run: |
+          docker run --rm -v "$RUNNER_TEMP:/d" postgres:17 \
+            pg_restore --data-only --table=StocksPrices -f /d/prices.sql /d/psx-data.dmp
+
+      - name: Sync prices into the database
+        run: python -m scripts.sync_prices --sql-file "$RUNNER_TEMP/prices.sql"

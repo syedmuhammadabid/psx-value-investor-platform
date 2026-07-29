@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+psycopg://psx:psx@localhost:5432/psx"
 
+    # Market data — public PSX price snapshot (pg_dump custom-format archive),
+    # refreshed daily. Reused as the authentic source for last-traded prices.
+    psx_price_snapshot_url: str = "https://pub-63afb24e90e0481a85914526878c4913.r2.dev/latest.dmp"
+
     # CORS — strict allow-list of trusted origins
     cors_origins: list[str] = ["http://localhost:3000"]
 

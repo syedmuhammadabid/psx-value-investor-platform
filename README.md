@@ -135,7 +135,7 @@ backend/                  # FastAPI service
     assistant/            # intent classifier + narrative composer (pure)
     scraper/              # normalize / validate / parse ingestion pipeline (pure)
   alembic/versions/       # 0001_initial → 0004_auth migrations
-  scripts/                # seed, generate_financials, ingest
+  scripts/                # seed, generate_financials, ingest, sync_prices
   tests/                  # pytest suites (unit + endpoint), ~98% coverage
 database/                 # SQL migrations, seeds, policy notes
 infra/                    # Docker Compose + env templates
@@ -172,6 +172,7 @@ Key environment variables:
 | `DATABASE_URL`             | backend / infra  | `postgresql+psycopg://…` connection string          |
 | `SECRET_KEY`               | backend          | Signs JWTs — **set a strong 32+ byte value in prod** |
 | `CORS_ORIGINS`             | backend          | Allow-list of trusted frontend origins              |
+| `PSX_PRICE_SNAPSHOT_URL`   | backend          | Public PSX price snapshot for `scripts.sync_prices` |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend         | Defaults to `http://localhost:8000/api/v1`          |
 
 ### 2. Run the backend + database with Docker
@@ -193,6 +194,42 @@ alembic upgrade head          # create all tables (0001 → 0004)
 python -m scripts.seed        # seed sample companies + financials
 python -m scripts.ingest      # (optional) run the ingestion pipeline demo
 ```
+
+### 3a. Refresh real PSX prices (optional)
+
+Seed prices are illustrative. To populate **real last-traded PSX prices**, the
+platform reuses the same public market-data source as the
+[psxworth](https://github.com/syedmuhammadabid/psxworth) project: a daily
+PostgreSQL snapshot published to a public Cloudflare R2 bucket
+(`PSX_PRICE_SNAPSHOT_URL`, default set in [config](backend/app/core/config.py)).
+The snapshot's `StocksPrices` table is extracted with `pg_restore` and matched
+to tracked companies by symbol, updating `current_price` in place. The run is
+idempotent and recorded in `ingestion_jobs` for audit.
+
+If a compatible `pg_restore` (PostgreSQL 17+) is on `PATH`, one command does
+everything:
+
+```bash
+python -m scripts.sync_prices            # download + extract + sync
+```
+
+Otherwise, extract with a `postgres:17` container, then sync:
+
+```bash
+curl -sSL -o tmp/psx.dmp "$PSX_PRICE_SNAPSHOT_URL"
+docker run --rm -v "$PWD/tmp:/d" postgres:17 \
+  pg_restore --data-only --table=StocksPrices -f /d/prices.sql /d/psx.dmp
+python -m scripts.sync_prices --sql-file tmp/prices.sql
+```
+
+**Daily automatic refresh.** Prices are refreshed every weekday after the PSX
+close by the [`Sync PSX Prices`](.github/workflows/sync-prices.yml) GitHub
+Actions workflow (`0 12 * * 1-5`, plus manual `workflow_dispatch`). It downloads
+the latest snapshot, extracts prices with `pg_restore`, and runs
+`scripts.sync_prices` against the database in the `DATABASE_URL` repository
+secret. Set that secret (and optionally a `PSX_PRICE_SNAPSHOT_URL` variable) for
+the automation to run.
+
 
 ### 4. Run the frontend
 
