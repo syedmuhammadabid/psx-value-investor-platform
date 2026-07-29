@@ -13,6 +13,7 @@ from app.repositories.company import CompanySort
 from app.schemas.alerts import AlertReport
 from app.schemas.assistant import AssistantAnswer, AssistantRequest
 from app.schemas.company import CompanyDetail, CompanySummary
+from app.schemas.data_quality import DataQualityReport
 from app.schemas.financials import FinancialStatements
 from app.schemas.history import CompanyHistory
 from app.schemas.pagination import Page
@@ -24,6 +25,7 @@ from app.schemas.zones import BuySellZones
 from app.services import alerts as alerts_service
 from app.services import assistant as assistant_service
 from app.services import company as service
+from app.services import data_quality as data_quality_service
 from app.services import financials as financials_service
 from app.services import history as history_service
 from app.services import ratios as ratios_service
@@ -113,6 +115,12 @@ def get_alerts(symbol: str, db: Annotated[Session, Depends(get_db)]) -> AlertRep
 def get_scores(symbol: str, db: Annotated[Session, Depends(get_db)]) -> CompanyScores:
     """Return the investment scorecard (health, Buffett, Graham, Piotroski, etc.)."""
     return scores_service.get_scores(db, symbol)
+
+
+@router.get("/{symbol}/data-quality", response_model=DataQualityReport)
+def get_data_quality(symbol: str, db: Annotated[Session, Depends(get_db)]) -> DataQualityReport:
+    """Return data freshness and provenance so users can gauge trust."""
+    return data_quality_service.get_data_quality(db, symbol)
 
 
 @router.post("/{symbol}/assistant", response_model=AssistantAnswer)

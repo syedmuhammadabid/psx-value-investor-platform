@@ -5,7 +5,17 @@ for Alembic autogeneration and ``create_all``.
 """
 
 from app.models.company import Company
+from app.models.data_source import DataSource
 from app.models.financial_statement import FinancialStatement, PeriodType
+from app.models.ingestion_job import IngestionJob, JobStatus
 from app.models.sector import Sector
 
-__all__ = ["Company", "FinancialStatement", "PeriodType", "Sector"]
+__all__ = [
+    "Company",
+    "DataSource",
+    "FinancialStatement",
+    "IngestionJob",
+    "JobStatus",
+    "PeriodType",
+    "Sector",
+]

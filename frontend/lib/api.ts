@@ -13,6 +13,7 @@ import type {
   CompanyScores,
   CompanySort,
   CompanySummary,
+  DataQualityReport,
   FinancialRatios,
   FinancialStatements,
   Page,
@@ -163,6 +164,12 @@ export function getAlerts(symbol: string): Promise<AlertReport> {
 export function getScores(symbol: string): Promise<CompanyScores> {
   return apiFetch<CompanyScores>(
     `/companies/${encodeURIComponent(symbol)}/scores`
+  );
+}
+
+export function getDataQuality(symbol: string): Promise<DataQualityReport> {
+  return apiFetch<DataQualityReport>(
+    `/companies/${encodeURIComponent(symbol)}/data-quality`
   );
 }
 

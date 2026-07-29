@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AlertsView } from "@/components/AlertsView";
 import { AssistantView } from "@/components/AssistantView";
 import { BuySellZonesView } from "@/components/BuySellZonesView";
+import { DataQualityView } from "@/components/DataQualityView";
 import { FinancialCharts } from "@/components/FinancialCharts";
 import { FinancialRatiosView } from "@/components/FinancialRatios";
 import { FinancialStatementsView } from "@/components/FinancialStatements";
@@ -14,6 +15,7 @@ import {
   ApiError,
   getAlerts,
   getCompany,
+  getDataQuality,
   getFinancials,
   getHistory,
   getRatios,
@@ -29,6 +31,7 @@ import type {
   CompanyDetail,
   CompanyHistory,
   CompanyScores,
+  DataQualityReport,
   FinancialRatios,
   FinancialStatements,
   PeriodType,
@@ -132,6 +135,13 @@ export default async function CompanyPage({
     scores = null;
   }
 
+  let dataQuality: DataQualityReport | null = null;
+  try {
+    dataQuality = await getDataQuality(company.symbol);
+  } catch {
+    dataQuality = null;
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12">
       <Link
@@ -231,6 +241,8 @@ export default async function CompanyPage({
           Financial statements are currently unavailable.
         </p>
       )}
+
+      {dataQuality ? <DataQualityView report={dataQuality} /> : null}
 
       <p className="mt-16 border-t border-border pt-6 text-xs text-text-muted">
         Figures shown are illustrative development data and must not be used for

@@ -401,3 +401,27 @@ export interface CompanyScores {
   altman_z: AltmanScore;
   magic_formula: MagicFormula;
 }
+
+/** Provenance for one ingested financial statement. */
+export interface DataSourceInfo {
+  period_type: PeriodType;
+  fiscal_year: number;
+  fiscal_period: string;
+  source_type: string;
+  source_url: string | null;
+  source_page: number | null;
+  extracted_at: string;
+  checksum: string;
+}
+
+/** Freshness and provenance summary for a company's financial data. */
+export interface DataQualityReport {
+  symbol: string;
+  currency: string;
+  last_updated: string | null;
+  latest_fiscal_year: number | null;
+  annual_periods: number;
+  quarterly_periods: number;
+  staleness_days: number | null;
+  sources: DataSourceInfo[];
+}
