@@ -5,7 +5,7 @@
 **Version:** 2.0 (Production-Grade)
 **Status:** Draft
 **Author:** Syed Muhammad Abid Hussain
-**Last Updated:** July 2026
+**Last Updated:** August 2026
 
 ---
 
@@ -246,7 +246,9 @@ At scale (later)
 * Environment separation: `development`, `staging`, `production`
 * Secrets managed via platform secret stores (never committed)
 * Infrastructure config as code where supported
-* Docker for reproducible backend builds
+* **Docker Compose** — single `docker compose up` starts all three services (PostgreSQL, FastAPI backend, Next.js frontend) for local development
+* Backend Dockerfile includes `postgresql-client-17` so the price-sync pipeline (`scripts.sync_prices`) can run `pg_restore` directly inside the container
+* Frontend Dockerfile runs `next dev` with volume mounts for live source-code reloading
 * Sentry (errors), UptimeRobot (uptime), PostHog (analytics), Resend (email) — all on **free tiers**
 
 ---

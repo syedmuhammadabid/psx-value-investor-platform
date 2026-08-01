@@ -25,8 +25,21 @@ import type {
   Valuation,
 } from "./types";
 
+/** Browser-side URL (embedded in the JS bundle, resolved by the user's browser). */
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+/**
+ * Server-side URL used during SSR. Inside Docker, `localhost` refers to the
+ * container itself, so we need the Docker service name to reach the backend.
+ * Falls back to the public URL when not set (e.g. local dev without Docker).
+ */
+const SERVER_API_BASE_URL =
+  process.env.INTERNAL_API_BASE_URL ?? API_BASE_URL;
+
+/** Pick the right base URL depending on whether we're on server or client. */
+const getBaseUrl = () =>
+  typeof window === "undefined" ? SERVER_API_BASE_URL : API_BASE_URL;
 
 export class ApiError extends Error {
   constructor(
@@ -41,7 +54,7 @@ export class ApiError extends Error {
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(`${getBaseUrl()}${path}`, {
       // Revalidate listings periodically; overrideable per call.
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },

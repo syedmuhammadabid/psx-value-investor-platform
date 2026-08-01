@@ -35,5 +35,23 @@ services:
     ports:
       - "8000:8000"
 
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      INTERNAL_API_BASE_URL: http://backend:8000/api/v1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend/app:/app/app
+      - ../frontend/components:/app/components
+      - ../frontend/lib:/app/lib
+      - ../frontend/public:/app/public
+
 volumes:
   db_data:

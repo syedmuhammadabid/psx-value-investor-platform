@@ -30,6 +30,14 @@ jobs:
       PSX_PRICE_SNAPSHOT_URL: ${{ vars.PSX_PRICE_SNAPSHOT_URL }}
 
     steps:
+      - name: Verify DATABASE_URL is configured
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL repository secret is not set. Add it under Settings → Secrets → Actions."
+            exit 1
+          fi
+        working-directory: .
+
       - uses: actions/checkout@v4
 
       - name: Setup Python

@@ -175,24 +175,27 @@ Key environment variables:
 | `PSX_PRICE_SNAPSHOT_URL`   | backend          | Public PSX price snapshot for `scripts.sync_prices` |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend         | Defaults to `http://localhost:8000/api/v1`          |
 
-### 2. Run the backend + database with Docker
+### 2. Run everything with Docker
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-- API:      http://localhost:8000  (OpenAPI docs at `/docs`, ReDoc at `/redoc`)
-- Health:   http://localhost:8000/api/v1/health
-- Postgres: localhost:5432
+This starts all three services:
+
+- **Frontend:** http://localhost:3000
+- **API:**      http://localhost:8000  (OpenAPI docs at `/docs`, ReDoc at `/redoc`)
+- **Health:**   http://localhost:8000/api/v1/health
+- **Postgres:** localhost:5432
 
 ### 3. Apply migrations and seed sample data
 
-Run inside the backend container (or a local venv with `DATABASE_URL` set):
+Run inside the backend container via `docker compose exec`:
 
 ```bash
-alembic upgrade head          # create all tables (0001 → 0004)
-python -m scripts.seed        # seed sample companies + financials
-python -m scripts.ingest      # (optional) run the ingestion pipeline demo
+docker compose -f infra/docker-compose.yml exec backend alembic upgrade head
+docker compose -f infra/docker-compose.yml exec backend python -m scripts.seed
+docker compose -f infra/docker-compose.yml exec backend python -m scripts.ingest   # (optional)
 ```
 
 ### 3a. Refresh real PSX prices (optional)
@@ -231,7 +234,12 @@ secret. Set that secret (and optionally a `PSX_PRICE_SNAPSHOT_URL` variable) for
 the automation to run.
 
 
-### 4. Run the frontend
+Open a company (e.g. `/companies/ENGRO`), then register at `/register` to unlock
+the watchlist, persisted portfolio, and alert subscriptions.
+
+### 4. Run the frontend or backend locally without Docker (optional)
+
+**Frontend only** (if not using Docker for the frontend):
 
 ```bash
 cd frontend
@@ -239,12 +247,7 @@ npm install
 npm run dev
 ```
 
-- Web app: http://localhost:3000
-
-Open a company (e.g. `/companies/ENGRO`), then register at `/register` to unlock
-the watchlist, persisted portfolio, and alert subscriptions.
-
-### 5. Run the backend locally without Docker (optional)
+**Backend only** (if not using Docker for the backend):
 
 ```bash
 cd backend
