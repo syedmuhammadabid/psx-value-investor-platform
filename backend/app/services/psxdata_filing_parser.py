@@ -13,16 +13,20 @@ import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.services.psxdata_documents import FilingDocument
 
-try:
-    import pypdf
-except ImportError:  # pragma: no cover - exercised in runtime only
-    pypdf = None
 
-PdfReader: Any | None = pypdf.PdfReader if pypdf is not None else None
+def _load_pdf_reader_class() -> type[Any] | None:
+    try:
+        from pypdf import PdfReader as pdf_reader_class
+    except ImportError:  # pragma: no cover - exercised in runtime only
+        return None
+    return cast(type[Any], pdf_reader_class)
+
+
+PdfReader = _load_pdf_reader_class()
 
 _WHITESPACE = re.compile(r"\s+")
 _HEADING_HINT = re.compile(r"\b(?:annual report|financial statements?|statement of)\b", re.I)
