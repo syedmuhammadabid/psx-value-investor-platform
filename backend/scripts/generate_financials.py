@@ -134,7 +134,7 @@ def generate_financials(
     # Per-company financial profiles anchored to actual PSX annual report data.
     # Margins and ratios are approximate values that produce realistic statements.
     # Companies not listed here fall back to random generation.
-    _COMPANY_PROFILES: dict[str, dict[str, Any]] = {
+    company_profiles: dict[str, dict[str, Any]] = {
         "MARI": {
             "latest_revenue": 182_000_000_000,
             "shares": 1_200_622_500,
@@ -281,7 +281,7 @@ def generate_financials(
         },
     }
 
-    profile = _COMPANY_PROFILES.get(symbol)
+    profile = company_profiles.get(symbol)
     if profile:
         shares = profile["shares"]
         margins = profile["margins"]

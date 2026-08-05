@@ -16,6 +16,11 @@ from pathlib import Path
 
 from app.services.psxdata_documents import FilingDocument
 
+try:
+    from pypdf import PdfReader
+except ImportError:  # pragma: no cover - exercised in runtime only
+    PdfReader = None
+
 _WHITESPACE = re.compile(r"\s+")
 _HEADING_HINT = re.compile(r"\b(?:annual report|financial statements?|statement of)\b", re.I)
 
@@ -50,9 +55,7 @@ def _extract_html_text(content: str) -> tuple[str | None, str]:
 
 
 def _extract_pdf_text(path: Path) -> tuple[str | None, str, int | None]:
-    try:
-        from pypdf import PdfReader
-    except ImportError:
+    if PdfReader is None:
         content = _normalize_text(path.read_bytes().decode("utf-8", errors="ignore"))
         match = _HEADING_HINT.search(content)
         heading = match.group(0).lower() if match else None
@@ -72,7 +75,10 @@ def _extract_pdf_text(path: Path) -> tuple[str | None, str, int | None]:
     return heading, content, len(reader.pages)
 
 
-def parse_filing_document(document: FilingDocument, source_path: str | Path) -> ParsedFilingDocument:
+def parse_filing_document(
+    document: FilingDocument,
+    source_path: str | Path,
+) -> ParsedFilingDocument:
     """Parse a downloaded filing into a searchable document index row."""
     path = Path(source_path)
     suffix = path.suffix.lower()

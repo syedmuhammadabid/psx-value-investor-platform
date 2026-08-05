@@ -14,7 +14,7 @@ import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -83,7 +83,7 @@ def _seed_financials(session: Session, company: Company, row: dict[str, Any]) ->
 
 def load_seed_data(path: Path = SEED_FILE) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
-        return json.load(handle)
+        return cast(dict[str, Any], json.load(handle))
 
 
 def seed() -> None:

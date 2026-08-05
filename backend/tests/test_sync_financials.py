@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import json
-from datetime import date
 from contextlib import nullcontext
+from datetime import date
 from pathlib import Path
 
+from scripts import sync_financials
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.financial_statement import FinancialStatement
-from scripts import sync_financials
 
 
 def _payload() -> dict[str, object]:
@@ -102,7 +102,9 @@ def test_sync_financials_ingests_records(
 
     monkeypatch.setattr(sync_financials, "SessionLocal", lambda: nullcontext(db_session))
 
-    exit_code = sync_financials.main(["--input-file", str(payload_path), "--source-type", "psxdata"])
+    exit_code = sync_financials.main(
+        ["--input-file", str(payload_path), "--source-type", "psxdata"]
+    )
 
     assert exit_code == 0
     assert (
@@ -239,7 +241,7 @@ def test_sync_financials_downloads_manifest_documents(tmp_path: Path, monkeypatc
         def __init__(self, *args, **kwargs) -> None:
             pass
 
-        def __enter__(self) -> "_Client":
+        def __enter__(self) -> _Client:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:

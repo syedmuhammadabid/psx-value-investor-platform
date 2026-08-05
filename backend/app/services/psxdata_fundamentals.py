@@ -10,8 +10,13 @@ metadata in a stable schema.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from typing import Any
+
+try:
+    import psxdata
+except ImportError:  # pragma: no cover - exercised in runtime only
+    psxdata = None
 
 
 def _normalize_value(value: Any) -> Any:
@@ -42,12 +47,10 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
 
 def fetch_fundamentals_manifest(symbols: Sequence[str] | None = None) -> list[dict[str, Any]]:
     """Fetch and normalize the PSX filing list for one or more symbols."""
-    try:
-        import psxdata
-    except ImportError as exc:  # pragma: no cover - exercised in runtime only
+    if psxdata is None:
         raise RuntimeError(
             "psxdata is not installed. Install it to use live PSX fundamentals capture."
-        ) from exc
+        )
 
     selected = [symbol.upper() for symbol in symbols] if symbols else None
     rows: list[dict[str, Any]] = []

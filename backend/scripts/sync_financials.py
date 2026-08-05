@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 from app.core.database import SessionLocal
+from app.schemas.ingestion import RawFinancialRecord
 from app.scraper import parser
 from app.services import ingestion as ingestion_service
 from app.services.psxdata_documents import build_filing_documents, download_filing_documents
@@ -78,7 +79,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser_.parse_args(argv)
 
 
-def _filter_records(records: list[parser.RawFinancialRecord], symbols: list[str] | None) -> list[parser.RawFinancialRecord]:
+def _filter_records(
+    records: list[RawFinancialRecord],
+    symbols: list[str] | None,
+) -> list[RawFinancialRecord]:
     if not symbols:
         return records
     allowed = {symbol.upper() for symbol in symbols}
@@ -114,7 +118,12 @@ def main(argv: list[str] | None = None) -> int:
                 index_file = Path(args.document_index_file)
                 index_file.write_text(
                     json.dumps(
-                        {"documents": [parsed_document_to_dict(document) for document in parsed_documents]},
+                        {
+                            "documents": [
+                                parsed_document_to_dict(document)
+                                for document in parsed_documents
+                            ]
+                        },
                         indent=2,
                     ),
                     encoding="utf-8",
@@ -125,7 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.download_documents_dir:
             print(
-                f"Downloaded {downloaded_count}/{document_count} filing documents to {args.download_documents_dir}."
+                f"Downloaded {downloaded_count}/{document_count} filing documents "
+                f"to {args.download_documents_dir}."
             )
         if args.document_index_file:
             print(f"Parsed {parsed_count} filing documents into {args.document_index_file}.")
