@@ -12,21 +12,22 @@ import html
 import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
+from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 from typing import Any, cast
 
 from app.services.psxdata_documents import FilingDocument
 
+try:
+    pypdf: ModuleType | None = import_module("pypdf")
+except ModuleNotFoundError:  # pragma: no cover - exercised in runtime only
+    pypdf = None
 
-def _load_pdf_reader_class() -> type[Any] | None:
-    try:
-        from pypdf import PdfReader as pdf_reader_class
-    except ImportError:  # pragma: no cover - exercised in runtime only
-        return None
-    return cast(type[Any], pdf_reader_class)
-
-
-PdfReader = _load_pdf_reader_class()
+if pypdf is not None:
+    PdfReader: type[Any] | None = cast(type[Any], pypdf.PdfReader)
+else:
+    PdfReader = None
 
 _WHITESPACE = re.compile(r"\s+")
 _HEADING_HINT = re.compile(r"\b(?:annual report|financial statements?|statement of)\b", re.I)
