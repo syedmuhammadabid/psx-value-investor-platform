@@ -100,7 +100,8 @@ def test_sync_financials_ingests_records(
     payload_path = tmp_path / "financials.json"
     payload_path.write_text(json.dumps(_payload()), encoding="utf-8")
 
-    monkeypatch.setattr(sync_financials, "SessionLocal", lambda: nullcontext(db_session))
+    monkeypatch.setattr(sync_financials, "SessionLocal",
+                        lambda: nullcontext(db_session))
 
     exit_code = sync_financials.main(
         ["--input-file", str(payload_path), "--source-type", "psxdata"]
@@ -126,7 +127,8 @@ def test_sync_financials_filters_symbols(
     payload_path = tmp_path / "financials.json"
     payload_path.write_text(json.dumps(_payload()), encoding="utf-8")
 
-    monkeypatch.setattr(sync_financials, "SessionLocal", lambda: nullcontext(db_session))
+    monkeypatch.setattr(sync_financials, "SessionLocal",
+                        lambda: nullcontext(db_session))
 
     exit_code = sync_financials.main(
         ["--input-file", str(payload_path), "--symbol", "MARI"]
@@ -154,7 +156,8 @@ def test_sync_financials_dry_run_skips_database(
 
     monkeypatch.setattr(sync_financials, "SessionLocal", _fail)
 
-    exit_code = sync_financials.main(["--input-file", str(payload_path), "--dry-run"])
+    exit_code = sync_financials.main(
+        ["--input-file", str(payload_path), "--dry-run"])
 
     assert exit_code == 0
     assert "dry run" in capsys.readouterr().out
@@ -179,7 +182,8 @@ def test_sync_financials_live_manifest_writes_json(tmp_path: Path, monkeypatch, 
         ],
     )
 
-    exit_code = sync_financials.main(["--live-manifest-file", str(output), "--symbol", "MARI"])
+    exit_code = sync_financials.main(
+        ["--live-manifest-file", str(output), "--symbol", "MARI"])
 
     assert exit_code == 0
     assert output.exists()

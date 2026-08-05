@@ -22,7 +22,8 @@ except ImportError:  # pragma: no cover - exercised in runtime only
     PdfReader = None
 
 _WHITESPACE = re.compile(r"\s+")
-_HEADING_HINT = re.compile(r"\b(?:annual report|financial statements?|statement of)\b", re.I)
+_HEADING_HINT = re.compile(
+    r"\b(?:annual report|financial statements?|statement of)\b", re.I)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,14 +50,16 @@ def _extract_html_text(content: str) -> tuple[str | None, str]:
     heading = None
     if heading_match:
         heading = heading_match.group(0).lower()
-    cleaned = re.sub(r"<script.*?</script>|<style.*?</style>", " ", content, flags=re.I | re.S)
+    cleaned = re.sub(r"<script.*?</script>|<style.*?</style>",
+                     " ", content, flags=re.I | re.S)
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
     return heading, _normalize_text(cleaned)
 
 
 def _extract_pdf_text(path: Path) -> tuple[str | None, str, int | None]:
     if PdfReader is None:
-        content = _normalize_text(path.read_bytes().decode("utf-8", errors="ignore"))
+        content = _normalize_text(
+            path.read_bytes().decode("utf-8", errors="ignore"))
         match = _HEADING_HINT.search(content)
         heading = match.group(0).lower() if match else None
         return heading, content, None

@@ -39,7 +39,8 @@ from app.services.psxdata_fundamentals import fetch_fundamentals_manifest
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    parser_ = argparse.ArgumentParser(description="Sync PSX financial statements from JSON.")
+    parser_ = argparse.ArgumentParser(
+        description="Sync PSX financial statements from JSON.")
     parser_.add_argument(
         "--input-file",
         help="Path to a JSON payload with a records array or a top-level array.",
@@ -98,9 +99,11 @@ def main(argv: list[str] | None = None) -> int:
             manifest = fetch_fundamentals_manifest(args.symbols)
         except Exception as exc:  # pragma: no cover - exercised in runtime only
             manifest = []
-            print(f"Live PSX manifest capture failed: {exc}. Writing an empty manifest.")
+            print(
+                f"Live PSX manifest capture failed: {exc}. Writing an empty manifest.")
 
-        output_file.write_text(json.dumps({"records": manifest}, indent=2), encoding="utf-8")
+        output_file.write_text(json.dumps(
+            {"records": manifest}, indent=2), encoding="utf-8")
 
         if not manifest:
             print("No live PSX filing rows were captured; wrote an empty manifest.")
@@ -110,11 +113,13 @@ def main(argv: list[str] | None = None) -> int:
         downloaded_count = 0
         parsed_count = 0
         if args.download_documents_dir:
-            saved_documents = download_filing_documents(manifest, args.download_documents_dir)
+            saved_documents = download_filing_documents(
+                manifest, args.download_documents_dir)
             downloaded_count = len(saved_documents)
             if args.document_index_file:
                 documents = build_filing_documents(manifest)
-                parsed_documents = parse_filing_documents(documents, saved_documents)
+                parsed_documents = parse_filing_documents(
+                    documents, saved_documents)
                 index_file = Path(args.document_index_file)
                 index_file.write_text(
                     json.dumps(
@@ -138,7 +143,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"to {args.download_documents_dir}."
             )
         if args.document_index_file:
-            print(f"Parsed {parsed_count} filing documents into {args.document_index_file}.")
+            print(
+                f"Parsed {parsed_count} filing documents into {args.document_index_file}.")
         return 0
 
     if not args.input_file:

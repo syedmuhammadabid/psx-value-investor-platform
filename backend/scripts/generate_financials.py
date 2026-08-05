@@ -289,7 +289,8 @@ def generate_financials(
         growth = profile["growth"]
     else:
         # Fallback: original random generation for unknown symbols.
-        shares = (market_cap / current_price) if current_price else market_cap / 100.0
+        shares = (
+            market_cap / current_price) if current_price else market_cap / 100.0
         margins = {
             "gross": rng.uniform(0.28, 0.55),
             "operating": rng.uniform(0.14, 0.30),
@@ -336,7 +337,8 @@ def generate_financials(
         quarter_number = 4 - quarter_idx  # Q4 newest within a fiscal year
         revenue = annual_revenue * seasonality[quarter_number - 1]
         months_before_year_end = (4 - quarter_number) * 3
-        period_end = _add_months(_last_day(fiscal_year, end_month), -months_before_year_end)
+        period_end = _add_months(
+            _last_day(fiscal_year, end_month), -months_before_year_end)
         statements.append(
             {
                 "period_type": "quarterly",
