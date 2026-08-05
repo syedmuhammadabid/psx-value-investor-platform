@@ -2,10 +2,10 @@
 
 ## Product Requirements Document (PRD) & MVP Roadmap
 
-**Version:** 2.0 (Production-Grade)
-**Status:** Draft
+**Version:** 2.1 (Production-Grade)
+**Status:** Active Development
 **Author:** Syed Muhammad Abid Hussain
-**Last Updated:** August 2026
+**Last Updated:** August 3, 2026
 
 ---
 
@@ -248,6 +248,7 @@ At scale (later)
 * Infrastructure config as code where supported
 * **Docker Compose** — single `docker compose up` starts all three services (PostgreSQL, FastAPI backend, Next.js frontend) for local development
 * Backend Dockerfile includes `postgresql-client-17` so the price-sync pipeline (`scripts.sync_prices`) can run `pg_restore` directly inside the container
+* Frontend uses `INTERNAL_API_BASE_URL` (`http://backend:8000`) for SSR fetches within the Docker network, while client-side requests use the public URL
 * Frontend Dockerfile runs `next dev` with volume mounts for live source-code reloading
 * Sentry (errors), UptimeRobot (uptime), PostHog (analytics), Resend (email) — all on **free tiers**
 
@@ -364,7 +365,7 @@ Nothing else matters initially.
 
 ---
 
-# Phase 1 — Project Setup
+# Phase 1 — Project Setup ✅ COMPLETE
 
 Duration
 
@@ -372,22 +373,22 @@ Duration
 
 Deliverables
 
-* Next.js application (TypeScript strict, ESLint/Prettier configured)
-* FastAPI backend (Ruff/Black/mypy, Pydantic settings)
-* PostgreSQL database with Alembic migrations
-* Supabase project (Auth + RLS baseline)
-* CI/CD pipelines (GitHub Actions: lint, test, type-check, build, deploy)
-* Staging + production environments with secret management
-* Sentry + logging + uptime monitoring wired in
-* Dockerized backend + local Docker Compose dev setup
-* GitHub Repository with branch protection & PR templates
-* Domain configuration (HTTPS, security headers)
-* Landing page
-* README + contribution guide + ADR folder
+* ✅ Next.js application (TypeScript strict, ESLint/Prettier configured)
+* ✅ FastAPI backend (Ruff/Black/mypy, Pydantic settings)
+* ✅ PostgreSQL database with Alembic migrations
+* Supabase project (Auth + RLS baseline) — deferred, using local Postgres via Docker Compose
+* ✅ CI/CD pipelines (GitHub Actions: price sync cron workflow)
+* Staging + production environments with secret management — in progress
+* Sentry + logging + uptime monitoring wired in — deferred
+* ✅ Dockerized backend + local Docker Compose dev setup (db, backend, frontend)
+* ✅ GitHub Repository
+* Domain configuration (HTTPS, security headers) — deferred
+* Landing page — deferred
+* ✅ README + contribution guide + ADR folder
 
 ---
 
-# Phase 2 — Company Explorer
+# Phase 2 — Company Explorer ✅ COMPLETE
 
 Goal
 
@@ -398,7 +399,7 @@ Homepage
 ```
 Search
 
-ENGRO
+ENGROH
 
 MARI
 
@@ -411,27 +412,31 @@ HBL
 
 Features
 
-* Search
-* Sector
-* Industry
-* Market Cap
-* Current Price
-* Company Profile
+* ✅ Search
+* ✅ Sector
+* ✅ Industry
+* ✅ Market Cap
+* ✅ Current Price (live via PSX sync pipeline)
+* ✅ Company Profile
 
 No login required.
 
+### Current Company Coverage (12 companies)
+
+FFC, MARI, OGDC, UBL, HBL, MEBL, ENGROH, SYS, LUCK, HUBC, PSO, INDU
+
 ---
 
-# Phase 3 — Company Profile
+# Phase 3 — Company Profile ✅ COMPLETE
 
 Every company gets its own page.
 
 Example
 
 ```
-ENGRO
+ENGROH
 
-Current Price
+Current Price       ← live from PSX sync
 
 Market Cap
 
@@ -454,7 +459,7 @@ Listing Date
 
 ---
 
-# Phase 4 — Financial Statements
+# Phase 4 — Financial Statements 🔄 IN PROGRESS
 
 Display
 
@@ -466,9 +471,16 @@ Cash Flow
 
 Support
 
-* Annual
-* Quarterly
-* Last 10 years
+* ✅ Annual
+* ✅ Quarterly
+* ✅ Last 10 years
+
+### Current Status
+
+* ✅ Frontend displays financial statements on company detail pages
+* ✅ Backend API serves financials (`GET /api/v1/companies/{symbol}/financials`)
+* ✅ `generate_financials.py` generates illustrative statements with per-company financial profiles
+* 🔄 **Next:** Build `sync_financials.py` scraper using `psxdata` library to replace synthetic data with **real PSX-reported financials** (see [Data Sync Scripts](#data-sync-scripts))
 
 ---
 
@@ -788,44 +800,82 @@ The assistant should answer using
 # Data Pipeline
 
 ```
-PSX Filings
+PSX Data Portal (dps.psx.com.pk)
+  │
+  ├── Price Snapshots (R2 bucket, pg_dump)  →  sync_prices.py   →  companies.current_price
+  │
+  ├── Financial Filings (via psxdata lib)   →  sync_financials.py →  financial_statements
+  │
+  └── Manual Ingestion (JSON)               →  ingest.py         →  financial_statements
 
 ↓
 
-Financial PDFs
+Normalized Database (PostgreSQL)
 
 ↓
 
-Python Parser
+Ratio Engine (Phase 5)
 
 ↓
 
-Data Validation
+Valuation Engine (Phase 8)
 
 ↓
 
-Normalized Database
+Recommendation Engine (Phase 10)
 
 ↓
 
-Ratio Engine
+REST API (FastAPI)
 
 ↓
 
-Valuation Engine
-
-↓
-
-Recommendation Engine
-
-↓
-
-REST API
-
-↓
-
-Frontend
+Frontend (Next.js SSR)
 ```
+
+## Data Sync Scripts
+
+The platform uses three data sync mechanisms, each serving a different purpose:
+
+### 1. `sync_prices.py` ✅ COMPLETE
+
+Fetches current stock prices from PSX R2 bucket dumps.
+
+* **Source:** PSX price snapshot (pg_dump from `psx-data-scraping` R2 bucket)
+* **Frequency:** Daily via GitHub Actions cron (`sync-prices.yml`)
+* **What it updates:** `companies.current_price` for all tracked symbols
+* **How it works:** Downloads SQL dump → `pg_restore` into temp table → matches tracked symbols → updates prices
+* **Usage:** `docker compose exec backend python -m scripts.sync_prices`
+
+### 2. `sync_financials.py` 🔄 PLANNED
+
+Fetches real financial statements from PSX using the `psxdata` Python library.
+
+* **Source:** PSX data portal via `psxdata` library ([github.com/mtauha/psxdata](https://github.com/mtauha/psxdata))
+* **Frequency:** Weekly or on-demand
+* **What it updates:** `financial_statements` table (income statement, balance sheet, cash flow)
+* **How it works:** Fetches annual/quarterly reports per symbol → maps to our schema → upserts into DB
+* **Usage:** `docker compose exec backend python -m scripts.sync_financials [--symbols FFC MARI]`
+* **Replaces:** Synthetic data from `generate_financials.py` with real PSX-reported figures
+
+### 3. `ingest.py` ✅ COMPLETE
+
+Manual ingestion of financial records from a JSON file.
+
+* **Source:** Hand-entered JSON files (format defined in `database/seeds/ingestion_sample.json`)
+* **Frequency:** Ad-hoc
+* **What it updates:** `financial_statements` table
+* **How it works:** Validates records via Pydantic → sanity checks → upserts into DB with provenance
+* **Usage:** `docker compose exec backend python -m scripts.ingest path/to/data.json`
+
+### 4. `seed.py` ✅ COMPLETE
+
+Initial database seeding for local development.
+
+* Seeds sectors, companies (from `database/seeds/companies.json`), and illustrative financial statements
+* Company profiles include realistic market caps, 52-week ranges, and dividend yields sourced from actual PSX data
+* Financial statements are generated with per-company margin profiles anchored to real annual report ratios
+* Safe to run repeatedly (idempotent — upserts by natural key)
 
 ## Data Quality & Integrity (Production-Critical)
 
@@ -1286,13 +1336,24 @@ Not needed while the platform is free. Build this only when introducing paid pla
 
 Do **not** support all 500+ PSX companies at launch.
 
-Instead
+**Current coverage:** 12 blue-chip companies across 8 sectors:
 
-Support approximately the top 100 companies by
+| Symbol | Company | Sector |
+| --- | --- | --- |
+| FFC | Fauji Fertilizer | Fertilizer |
+| MARI | Mari Petroleum | Oil & Gas Exploration |
+| OGDC | Oil & Gas Development | Oil & Gas Exploration |
+| UBL | United Bank | Commercial Banks |
+| HBL | Habib Bank | Commercial Banks |
+| MEBL | Meezan Bank | Commercial Banks |
+| ENGROH | Engro Holdings | Fertilizer |
+| SYS | Systems Limited | Technology & Communication |
+| LUCK | Lucky Cement | Cement |
+| HUBC | Hub Power | Power Generation & Distribution |
+| PSO | Pakistan State Oil | Oil & Gas Marketing |
+| INDU | Indus Motor | Automobile Assembler |
 
-* Market Capitalization
-* Trading Volume
-* Investor Interest
+**Target:** Expand to top 100 companies by market capitalization, trading volume, and investor interest.
 
 This dramatically reduces development effort while covering most user demand.
 

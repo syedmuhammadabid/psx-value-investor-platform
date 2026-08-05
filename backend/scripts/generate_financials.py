@@ -130,29 +130,186 @@ def generate_financials(
         return []
 
     rng = random.Random(f"psx::{symbol}")
-    shares = (market_cap / current_price) if current_price else market_cap / 100.0
 
-    margins = {
-        "gross": rng.uniform(0.28, 0.55),
-        "operating": rng.uniform(0.14, 0.30),
-        "interest": rng.uniform(0.01, 0.05),
-        "tax": rng.uniform(0.24, 0.31),
-        "asset_turnover": rng.uniform(1.3, 2.6),
-        "equity": rng.uniform(0.38, 0.60),
-        "debt": rng.uniform(0.12, 0.34),
-        "current_assets": rng.uniform(0.35, 0.50),
-        "current_liabilities": rng.uniform(0.20, 0.32),
-        "cash": rng.uniform(0.18, 0.35),
-        "inventory": rng.uniform(0.20, 0.38),
-        "ocf": rng.uniform(1.05, 1.45),
-        "capex": rng.uniform(0.05, 0.12),
-        "payout": rng.uniform(0.20, 0.55),
+    # Per-company financial profiles anchored to actual PSX annual report data.
+    # Margins and ratios are approximate values that produce realistic statements.
+    # Companies not listed here fall back to random generation.
+    _COMPANY_PROFILES: dict[str, dict[str, Any]] = {
+        "MARI": {
+            "latest_revenue": 182_000_000_000,
+            "shares": 1_200_622_500,
+            "growth": 0.14,
+            "margins": {
+                "gross": 0.62, "operating": 0.52, "interest": 0.005,
+                "tax": 0.28, "asset_turnover": 0.55, "equity": 0.65,
+                "debt": 0.05, "current_assets": 0.50, "current_liabilities": 0.20,
+                "cash": 0.40, "inventory": 0.05, "ocf": 1.30,
+                "capex": 0.18, "payout": 0.40,
+            },
+        },
+        "OGDC": {
+            "latest_revenue": 401_000_000_000,
+            "shares": 4_300_930_000,
+            "growth": 0.08,
+            "margins": {
+                "gross": 0.55, "operating": 0.48, "interest": 0.005,
+                "tax": 0.30, "asset_turnover": 0.35, "equity": 0.72,
+                "debt": 0.02, "current_assets": 0.40, "current_liabilities": 0.15,
+                "cash": 0.30, "inventory": 0.05, "ocf": 1.25,
+                "capex": 0.15, "payout": 0.38,
+            },
+        },
+        "UBL": {
+            "latest_revenue": 371_000_000_000,
+            "shares": 2_504_250_000,
+            "growth": 0.12,
+            "margins": {
+                "gross": 0.72, "operating": 0.35, "interest": 0.01,
+                "tax": 0.30, "asset_turnover": 0.046, "equity": 0.04,
+                "debt": 0.10, "current_assets": 0.85, "current_liabilities": 0.88,
+                "cash": 0.15, "inventory": 0.0, "ocf": 1.10,
+                "capex": 0.01, "payout": 0.50,
+            },
+        },
+        "HBL": {
+            "latest_revenue": 342_000_000_000,
+            "shares": 14_668_530_000,
+            "growth": 0.10,
+            "margins": {
+                "gross": 0.70, "operating": 0.30, "interest": 0.01,
+                "tax": 0.32, "asset_turnover": 0.057, "equity": 0.068,
+                "debt": 0.12, "current_assets": 0.82, "current_liabilities": 0.86,
+                "cash": 0.12, "inventory": 0.0, "ocf": 1.05,
+                "capex": 0.01, "payout": 0.45,
+            },
+        },
+        "MEBL": {
+            "latest_revenue": 380_000_000_000,
+            "shares": 1_800_550_000,
+            "growth": 0.18,
+            "margins": {
+                "gross": 0.75, "operating": 0.40, "interest": 0.005,
+                "tax": 0.27, "asset_turnover": 0.06, "equity": 0.05,
+                "debt": 0.08, "current_assets": 0.80, "current_liabilities": 0.87,
+                "cash": 0.18, "inventory": 0.0, "ocf": 1.15,
+                "capex": 0.01, "payout": 0.40,
+            },
+        },
+        "ENGROH": {
+            "latest_revenue": 540_000_000_000,
+            "shares": 536_626_468,
+            "growth": 0.10,
+            "margins": {
+                "gross": 0.30, "operating": 0.12, "interest": 0.04,
+                "tax": 0.28, "asset_turnover": 1.10, "equity": 0.44,
+                "debt": 0.30, "current_assets": 0.45, "current_liabilities": 0.35,
+                "cash": 0.15, "inventory": 0.25, "ocf": 1.20,
+                "capex": 0.08, "payout": 0.55,
+            },
+        },
+        "FFC": {
+            "latest_revenue": 280_000_000_000,
+            "shares": 1_423_000_000,
+            "growth": 0.10,
+            "margins": {
+                "gross": 0.45, "operating": 0.30, "interest": 0.02,
+                "tax": 0.26, "asset_turnover": 0.64, "equity": 0.63,
+                "debt": 0.15, "current_assets": 0.50, "current_liabilities": 0.22,
+                "cash": 0.20, "inventory": 0.22, "ocf": 1.20,
+                "capex": 0.06, "payout": 0.70,
+            },
+        },
+        "SYS": {
+            "latest_revenue": 67_500_000_000,
+            "shares": 234_000_000,
+            "growth": 0.22,
+            "margins": {
+                "gross": 0.24, "operating": 0.12, "interest": 0.005,
+                "tax": 0.25, "asset_turnover": 1.50, "equity": 0.55,
+                "debt": 0.08, "current_assets": 0.65, "current_liabilities": 0.35,
+                "cash": 0.25, "inventory": 0.02, "ocf": 1.10,
+                "capex": 0.03, "payout": 0.25,
+            },
+        },
+        "LUCK": {
+            "latest_revenue": 489_000_000_000,
+            "shares": 1_465_000_000,
+            "growth": 0.12,
+            "margins": {
+                "gross": 0.32, "operating": 0.18, "interest": 0.02,
+                "tax": 0.25, "asset_turnover": 0.74, "equity": 0.52,
+                "debt": 0.18, "current_assets": 0.45, "current_liabilities": 0.25,
+                "cash": 0.15, "inventory": 0.20, "ocf": 1.25,
+                "capex": 0.10, "payout": 0.30,
+            },
+        },
+        "HUBC": {
+            "latest_revenue": 131_000_000_000,
+            "shares": 1_298_000_000,
+            "growth": 0.08,
+            "margins": {
+                "gross": 0.42, "operating": 0.35, "interest": 0.04,
+                "tax": 0.22, "asset_turnover": 0.50, "equity": 0.40,
+                "debt": 0.35, "current_assets": 0.55, "current_liabilities": 0.30,
+                "cash": 0.25, "inventory": 0.05, "ocf": 1.35,
+                "capex": 0.04, "payout": 0.80,
+            },
+        },
+        "PSO": {
+            "latest_revenue": 3_742_000_000_000,
+            "shares": 383_000_000,
+            "growth": 0.08,
+            "margins": {
+                "gross": 0.035, "operating": 0.012, "interest": 0.008,
+                "tax": 0.35, "asset_turnover": 4.50, "equity": 0.20,
+                "debt": 0.25, "current_assets": 0.80, "current_liabilities": 0.70,
+                "cash": 0.05, "inventory": 0.30, "ocf": 1.10,
+                "capex": 0.005, "payout": 0.30,
+            },
+        },
+        "INDU": {
+            "latest_revenue": 152_500_000_000,
+            "shares": 78_600_000,
+            "growth": 0.08,
+            "margins": {
+                "gross": 0.18, "operating": 0.12, "interest": 0.005,
+                "tax": 0.30, "asset_turnover": 2.00, "equity": 0.50,
+                "debt": 0.05, "current_assets": 0.70, "current_liabilities": 0.45,
+                "cash": 0.20, "inventory": 0.35, "ocf": 1.15,
+                "capex": 0.02, "payout": 0.65,
+            },
+        },
     }
 
-    end_month = _fiscal_end_month(fiscal_year_end)
-    latest_revenue = market_cap * rng.uniform(0.45, 1.15)
-    growth = rng.uniform(0.06, 0.17)
+    profile = _COMPANY_PROFILES.get(symbol)
+    if profile:
+        shares = profile["shares"]
+        margins = profile["margins"]
+        latest_revenue = profile["latest_revenue"]
+        growth = profile["growth"]
+    else:
+        # Fallback: original random generation for unknown symbols.
+        shares = (market_cap / current_price) if current_price else market_cap / 100.0
+        margins = {
+            "gross": rng.uniform(0.28, 0.55),
+            "operating": rng.uniform(0.14, 0.30),
+            "interest": rng.uniform(0.01, 0.05),
+            "tax": rng.uniform(0.24, 0.31),
+            "asset_turnover": rng.uniform(1.3, 2.6),
+            "equity": rng.uniform(0.38, 0.60),
+            "debt": rng.uniform(0.12, 0.34),
+            "current_assets": rng.uniform(0.35, 0.50),
+            "current_liabilities": rng.uniform(0.20, 0.32),
+            "cash": rng.uniform(0.18, 0.35),
+            "inventory": rng.uniform(0.20, 0.38),
+            "ocf": rng.uniform(1.05, 1.45),
+            "capex": rng.uniform(0.05, 0.12),
+            "payout": rng.uniform(0.20, 0.55),
+        }
+        latest_revenue = market_cap * rng.uniform(0.45, 1.15)
+        growth = rng.uniform(0.06, 0.17)
 
+    end_month = _fiscal_end_month(fiscal_year_end)
     statements: list[dict[str, Any]] = []
 
     # Annual statements, newest to oldest.
