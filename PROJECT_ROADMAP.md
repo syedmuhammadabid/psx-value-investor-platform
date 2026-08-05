@@ -363,9 +363,30 @@ Nothing else matters initially.
 
 # Product Roadmap
 
+## Completion Audit
+
+This roadmap is the product target, not a claim that every phase is already shipped. As of the current repo state, the core investor workflow is implemented, but several production-readiness and data-pipeline items remain incomplete.
+
+### Summary
+
+| Area | Status |
+| --- | --- |
+| Company explorer, profile, financials UI, ratios, charts, screener, valuation, recommendations, portfolio, watchlist, alerts, assistant endpoints | Implemented |
+| Financial sync CLI via `sync_financials.py` | Partial |
+| Supabase Auth + RLS baseline | Missing |
+| Staging / production deploy automation | Partial |
+| Observability stack (Sentry, metrics, tracing, uptime) | Partial |
+| Security hardening for headers, rate limiting, dependency scanning | Partial |
+| Frontend QA stack (Playwright, Storybook, component tests) | Missing |
+| i18n and contract testing | Missing |
+
+### Current Plan State
+
+The phases below should be read as the intended roadmap. Phases marked complete are complete in product scope, but the implementation still needs the production engineering standards above before beta launch.
+
 ---
 
-# Phase 1 — Project Setup ✅ COMPLETE
+# Phase 1 — Project Setup ✅ COMPLETE FOR CORE SCAFFOLD, PARTIAL FOR PRODUCTION READINESS
 
 Duration
 
@@ -378,8 +399,8 @@ Deliverables
 * ✅ PostgreSQL database with Alembic migrations
 * Supabase project (Auth + RLS baseline) — deferred, using local Postgres via Docker Compose
 * ✅ CI/CD pipelines (GitHub Actions: price sync cron workflow)
-* Staging + production environments with secret management — in progress
-* Sentry + logging + uptime monitoring wired in — deferred
+* Staging + production environments with secret management — partial
+* Sentry + logging + uptime monitoring wired in — partial
 * ✅ Dockerized backend + local Docker Compose dev setup (db, backend, frontend)
 * ✅ GitHub Repository
 * Domain configuration (HTTPS, security headers) — deferred
@@ -459,7 +480,7 @@ Listing Date
 
 ---
 
-# Phase 4 — Financial Statements 🔄 IN PROGRESS
+# Phase 4 — Financial Statements 🔄 PARTIAL; REAL PSX INGESTION STILL PLANNED
 
 Display
 
@@ -480,7 +501,7 @@ Support
 * ✅ Frontend displays financial statements on company detail pages
 * ✅ Backend API serves financials (`GET /api/v1/companies/{symbol}/financials`)
 * ✅ `generate_financials.py` generates illustrative statements with per-company financial profiles
-* 🔄 **Next:** Build `sync_financials.py` scraper using `psxdata` library to replace synthetic data with **real PSX-reported financials** (see [Data Sync Scripts](#data-sync-scripts))
+* 🔄 **Next:** Turn the captured PSX filing manifest into a document parser so `sync_financials.py` can replace synthetic data with **real PSX-reported financials** (see [Data Sync Scripts](#data-sync-scripts))
 
 ---
 
@@ -774,11 +795,15 @@ Delivery
 * Email
 * Telegram (future)
 
+Current implementation covers alert evaluation and subscription management; delivery transport is still pending.
+
 ---
 
 # Phase 13 — AI Assistant
 
 Future module.
+
+The repo currently contains deterministic assistant endpoints and narrative generation, but not a fully fledged AI/LLM assistant that reasons over the full investment stack.
 
 Example
 
@@ -847,16 +872,17 @@ Fetches current stock prices from PSX R2 bucket dumps.
 * **How it works:** Downloads SQL dump → `pg_restore` into temp table → matches tracked symbols → updates prices
 * **Usage:** `docker compose exec backend python -m scripts.sync_prices`
 
-### 2. `sync_financials.py` 🔄 PLANNED
+### 2. `sync_financials.py` 🔄 PARTIAL
 
-Fetches real financial statements from PSX using the `psxdata` Python library.
+Ingests validated financial-statement payloads using the existing ingestion pipeline and can also capture a live PSX filing manifest.
 
-* **Source:** PSX data portal via `psxdata` library ([github.com/mtauha/psxdata](https://github.com/mtauha/psxdata))
+* **Source:** JSON payload exported from a PSX extractor or backfill workflow
 * **Frequency:** Weekly or on-demand
 * **What it updates:** `financial_statements` table (income statement, balance sheet, cash flow)
-* **How it works:** Fetches annual/quarterly reports per symbol → maps to our schema → upserts into DB
-* **Usage:** `docker compose exec backend python -m scripts.sync_financials [--symbols FFC MARI]`
-* **Replaces:** Synthetic data from `generate_financials.py` with real PSX-reported figures
+* **How it works:** Parses JSON → validates records → applies the same idempotent upsert path as manual ingestion
+* **Usage:** `docker compose exec backend python -m scripts.sync_financials --input-file path/to/financials.json`
+* **Usage (live manifest):** `docker compose exec backend python -m scripts.sync_financials --live-manifest-file path/to/manifest.json`
+* **Next step:** Add a document parser that turns the live manifest into statement rows
 
 ### 3. `ingest.py` ✅ COMPLETE
 

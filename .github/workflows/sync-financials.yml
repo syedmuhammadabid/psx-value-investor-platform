@@ -1,0 +1,60 @@
+name: Sync PSX Financials Manifest
+
+on:
+  schedule:
+    # Weekly capture of the live PSX filing list, after the market week closes.
+    - cron: "0 13 * * 0"
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Optional comma-separated symbol list to limit the capture"
+        required: false
+        type: string
+
+concurrency:
+  group: sync-financials-manifest
+  cancel-in-progress: false
+
+jobs:
+  capture-manifest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend and psxdata dependencies
+        run: |
+          pip install -e .
+          pip install psxdata
+
+      - name: Capture live filing manifest
+        env:
+          SYMBOLS: ${{ inputs.symbols }}
+        run: |
+          output="$RUNNER_TEMP/psx-financial-manifest.json"
+          args=(python -m scripts.sync_financials --live-manifest-file "$output")
+          if [ -n "$SYMBOLS" ]; then
+            IFS=',' read -ra symbols <<< "$SYMBOLS"
+            for symbol in "${symbols[@]}"; do
+              trimmed="$(echo "$symbol" | xargs)"
+              if [ -n "$trimmed" ]; then
+                args+=(--symbol "$trimmed")
+              fi
+            done
+          fi
+          "${args[@]}"
+
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: psx-financial-manifest
+          path: ${{ runner.temp }}/psx-financial-manifest.json

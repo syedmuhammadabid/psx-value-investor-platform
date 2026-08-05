@@ -135,7 +135,7 @@ backend/                  # FastAPI service
     assistant/            # intent classifier + narrative composer (pure)
     scraper/              # normalize / validate / parse ingestion pipeline (pure)
   alembic/versions/       # 0001_initial → 0004_auth migrations
-  scripts/                # seed, generate_financials, ingest, sync_prices
+  scripts/                # seed, generate_financials, ingest, sync_prices, sync_financials
   tests/                  # pytest suites (unit + endpoint), ~98% coverage
 database/                 # SQL migrations, seeds, policy notes
 infra/                    # Docker Compose + env templates
@@ -223,6 +223,46 @@ curl -sSL -o tmp/psx.dmp "$PSX_PRICE_SNAPSHOT_URL"
 docker run --rm -v "$PWD/tmp:/d" postgres:17 \
   pg_restore --data-only --table=StocksPrices -f /d/prices.sql /d/psx.dmp
 python -m scripts.sync_prices --sql-file tmp/prices.sql
+```
+
+### 3b. Sync financial statements from an exported payload or capture the live PSX filing manifest
+
+The repository now includes `scripts.sync_financials`, which ingests PSX
+financial-statement records using the same validated JSON schema as
+`database/seeds/ingestion_sample.json`. This is the stable write path for the
+future live PSX extractor.
+
+```bash
+python -m scripts.sync_financials --input-file tmp/psx_financials.json
+python -m scripts.sync_financials --input-file tmp/psx_financials.json --symbol ENGROH
+```
+
+The input payload can be a top-level array or an object with a `records` array.
+Use `--dry-run` to validate and filter a payload without writing to the
+database.
+
+To capture the current PSX filing list as a normalized manifest, use:
+
+```bash
+python -m scripts.sync_financials --live-manifest-file tmp/psx-financial-manifest.json
+python -m scripts.sync_financials --live-manifest-file tmp/psx-financial-manifest.json --symbol MARI --symbol UBL
+```
+
+That live manifest is the first step toward a filing-document extractor and is
+what the weekly GitHub Actions workflow captures.
+
+If you also want the referenced filing documents downloaded locally for later
+parsing, add `--download-documents-dir`:
+
+```bash
+python -m scripts.sync_financials --live-manifest-file tmp/psx-financial-manifest.json --download-documents-dir tmp/psx-financial-documents
+```
+
+To build the intermediate parsed-document index as well, add
+`--document-index-file`:
+
+```bash
+python -m scripts.sync_financials --live-manifest-file tmp/psx-financial-manifest.json --download-documents-dir tmp/psx-financial-documents --document-index-file tmp/psx-document-index.json
 ```
 
 **Daily automatic refresh.** Prices are refreshed every weekday after the PSX
