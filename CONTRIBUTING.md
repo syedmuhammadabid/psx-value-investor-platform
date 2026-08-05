@@ -50,6 +50,8 @@ mypy app
 pytest
 ```
 
+Install the repository hooks with `pre-commit install` after installing the backend dev dependencies.
+
 ## Pull request checklist
 
 - [ ] Tests added/updated and passing

@@ -60,13 +60,11 @@ def fetch_fundamentals_manifest(symbols: Sequence[str] | None = None) -> list[di
             frame = psxdata.fundamentals(symbol)
             if frame is None or frame.empty:
                 continue
-            rows.extend(_normalize_row(row)
-                        for row in frame.to_dict(orient="records"))
+            rows.extend(_normalize_row(row) for row in frame.to_dict(orient="records"))
     else:
         frame = psxdata.fundamentals()
         if frame is None or frame.empty:
             return []
-        rows.extend(_normalize_row(row)
-                    for row in frame.to_dict(orient="records"))
+        rows.extend(_normalize_row(row) for row in frame.to_dict(orient="records"))
 
     return rows

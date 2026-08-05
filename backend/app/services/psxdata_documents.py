@@ -90,8 +90,7 @@ def download_filing_documents(
             response = client.get(document.document_url)
             response.raise_for_status()
 
-            suffix = Path(document.document_url.split(
-                "?", 1)[0]).suffix.lower()
+            suffix = Path(document.document_url.split("?", 1)[0]).suffix.lower()
             if suffix not in {".pdf", ".html", ".htm", ".xls", ".xlsx", ".doc", ".docx"}:
                 suffix = ".bin"
 
