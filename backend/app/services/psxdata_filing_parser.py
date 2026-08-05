@@ -13,13 +13,16 @@ import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 from app.services.psxdata_documents import FilingDocument
 
 try:
-    from pypdf import PdfReader
+    import pypdf
 except ImportError:  # pragma: no cover - exercised in runtime only
-    PdfReader = None
+    pypdf = None
+
+PdfReader: Any | None = pypdf.PdfReader if pypdf is not None else None
 
 _WHITESPACE = re.compile(r"\s+")
 _HEADING_HINT = re.compile(r"\b(?:annual report|financial statements?|statement of)\b", re.I)
