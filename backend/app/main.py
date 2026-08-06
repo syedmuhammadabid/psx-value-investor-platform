@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,19 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
+from app.jobs.scheduler import scheduler
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
+    """Start background jobs on startup; stop them cleanly on shutdown."""
+    scheduler.start()
+    logging.getLogger("app").info("scheduler started — daily price sync at 17:00 PKT (12:00 UTC)")
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
+        logging.getLogger("app").info("scheduler stopped")
 
 
 def create_app() -> FastAPI:
@@ -24,6 +38,7 @@ def create_app() -> FastAPI:
         version=settings.version,
         docs_url="/docs",
         openapi_url="/openapi.json",
+        lifespan=_lifespan,
     )
 
     app.add_middleware(RequestContextMiddleware)
