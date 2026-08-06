@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+from datetime import UTC, datetime
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +16,7 @@ from app.jobs.scheduler import (
     PRICE_SYNC_JOB_NAME,
     PRICE_SYNC_MINUTE_UTC,
 )
+from app.scraper.prices import PriceSnapshotRow
 
 
 def test_price_sync_job_id() -> None:
@@ -43,8 +47,6 @@ def test_run_price_sync_logs_warning_when_no_rows(caplog: pytest.LogCaptureFixtu
         mock_tmp.return_value.__enter__ = MagicMock(return_value="/tmp/fake")
         mock_tmp.return_value.__exit__ = MagicMock(return_value=False)
 
-        import logging
-
         with caplog.at_level(logging.WARNING, logger="app.jobs.price_sync"):
             run_price_sync()
 
@@ -53,10 +55,6 @@ def test_run_price_sync_logs_warning_when_no_rows(caplog: pytest.LogCaptureFixtu
 
 def test_run_price_sync_calls_sync_service_on_success() -> None:
     """run_price_sync should call the price_sync service when rows are returned."""
-    from decimal import Decimal
-    from datetime import UTC, datetime
-    from app.scraper.prices import PriceSnapshotRow
-
     fake_rows = [PriceSnapshotRow(symbol="MARI", price=Decimal("650.00"), as_of=datetime.now(UTC))]
     fake_result = MagicMock(
         status="SUCCEEDED",

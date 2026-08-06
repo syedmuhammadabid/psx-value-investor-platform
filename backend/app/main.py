@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -17,7 +18,7 @@ from app.jobs.scheduler import scheduler
 
 
 @asynccontextmanager
-async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Start background jobs on startup; stop them cleanly on shutdown."""
     scheduler.start()
     logging.getLogger("app").info("scheduler started — daily price sync at 17:00 PKT (12:00 UTC)")

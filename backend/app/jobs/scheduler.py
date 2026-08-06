@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # inspected in tests without relying on the scheduler's runtime state.
 PRICE_SYNC_JOB_ID = "daily_price_sync"
 PRICE_SYNC_JOB_NAME = "Daily PSX price sync (17:00 PKT)"
-PRICE_SYNC_HOUR_UTC = 12   # 17:00 PKT = 12:00 UTC (PKT is UTC+5)
+PRICE_SYNC_HOUR_UTC = 12  # 17:00 PKT = 12:00 UTC (PKT is UTC+5)
 PRICE_SYNC_MINUTE_UTC = 0
 
 
