@@ -1,106 +1,97 @@
-"""CLI to refresh company prices from the public PSX market-data snapshot.
+"""CLI to refresh company prices from PSX using the psxdata package.
 
-PsxWorth publishes a daily PostgreSQL snapshot of PSX market data to a public R2
-bucket. This script reuses that same source to update ``current_price`` for the
-companies we track with real last-traded PSX prices.
+Fetches live/latest quotes for each tracked company directly from PSX via
+the ``psxdata`` library, replacing the earlier pg_dump / pg_restore workflow.
 
-The snapshot is a ``pg_dump`` custom-format archive. Its ``StocksPrices`` table
-must be extracted to plain SQL with ``pg_restore`` (which must be at least as new
-as the server that produced the dump — currently PostgreSQL 17). Two workflows
-are supported:
+Usage::
 
-Convenience (a compatible ``pg_restore`` is on PATH)::
+    python -m scripts.sync_prices            # fetch quotes + update DB
+    python -m scripts.sync_prices --dry-run  # print fetched prices, no DB write
 
-    python -m scripts.sync_prices                    # download + extract + sync
-    python -m scripts.sync_prices --dump-file x.dmp  # extract + sync
-
-Two-step (no local ``pg_restore``; use a postgres:17 container to extract)::
-
-    curl -sSL -o tmp/psx.dmp "$PSX_PRICE_SNAPSHOT_URL"
-    docker run --rm -v "$PWD/tmp:/d" postgres:17 \\
-        pg_restore --data-only --table=StocksPrices -f /d/prices.sql /d/psx.dmp
-    python -m scripts.sync_prices --sql-file tmp/prices.sql
-
-Idempotent: re-running with an unchanged snapshot reports every price as
-unchanged. Exits non-zero when no snapshot prices matched a tracked company.
+Idempotent: re-running when prices haven't changed leaves the database
+unchanged.  Exits non-zero when no prices could be matched to a tracked
+company.
 """
 
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
-import tempfile
-from pathlib import Path
+from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 
-import httpx
+import psxdata
+from sqlalchemy import select
 
-from app.core.config import settings
 from app.core.database import SessionLocal
-from app.scraper import prices as prices_module
+from app.models.company import Company
+from app.scraper.prices import PriceSnapshotRow
 from app.services import price_sync as price_sync_service
 
 
-def _download(url: str, dest: Path) -> None:
-    """Stream the snapshot archive to ``dest``."""
-    with httpx.stream("GET", url, follow_redirects=True, timeout=120.0) as response:
-        response.raise_for_status()
-        with dest.open("wb") as fh:
-            for chunk in response.iter_bytes():
-                fh.write(chunk)
+def _get_price_from_quote(q: object) -> Decimal | None:
+    """Extract a valid price from a psxdata quote object (Series, dict, or similar)."""
+    raw = None
+    # Try attribute access first (dataclass / pandas Series), then item access (dict).
+    if hasattr(q, "price"):
+        raw = q.price
+    elif hasattr(q, "__getitem__"):
+        try:
+            raw = q["price"]  # type: ignore[index]
+        except (KeyError, TypeError):
+            return None
 
+    if raw is None:
+        return None
 
-def _extract_sql(dump_path: Path, pg_restore: str) -> str:
-    """Extract the ``StocksPrices`` table from a custom-format dump to plain SQL."""
     try:
-        completed = subprocess.run(
-            [
-                pg_restore,
-                "--data-only",
-                "--table=StocksPrices",
-                "-f",
-                "-",
-                str(dump_path),
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except FileNotFoundError:
-        raise SystemExit(
-            f"'{pg_restore}' not found. Install postgresql-client (>= the dump's server "
-            "version, currently 17) or use the two-step --sql-file workflow."
-        ) from None
-    except subprocess.CalledProcessError as exc:
-        raise SystemExit(f"pg_restore failed: {exc.stderr.strip()}") from exc
-    return completed.stdout
+        price = Decimal(str(raw))
+    except (InvalidOperation, ValueError):
+        return None
+
+    return price if price.is_finite() and price >= 0 else None
 
 
-def _resolve_sql(args: argparse.Namespace) -> tuple[str, str]:
-    """Return ``(sql_text, source_label)`` from the provided arguments."""
-    if args.sql_file:
-        path = Path(args.sql_file)
-        return path.read_text(encoding="utf-8"), str(path)
+def _fetch_quotes(symbols: list[str]) -> list[PriceSnapshotRow]:
+    """Fetch a live quote from PSX for each symbol.
 
-    if args.dump_file:
-        dump_path = Path(args.dump_file)
-        return _extract_sql(dump_path, args.pg_restore), str(dump_path)
+    Symbols that fail (network error, unknown ticker, missing price field)
+    are skipped with a warning printed to *stderr*.
+    """
+    rows: list[PriceSnapshotRow] = []
+    now = datetime.now(UTC)
 
-    url = args.url or settings.psx_price_snapshot_url
-    with tempfile.TemporaryDirectory() as tmp:
-        dump_path = Path(tmp) / "psx-data.dmp"
-        _download(url, dump_path)
-        return _extract_sql(dump_path, args.pg_restore), url
+    for symbol in symbols:
+        try:
+            q = psxdata.quote(symbol)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [WARN] {symbol}: quote failed — {exc}", file=sys.stderr)
+            continue
+
+        price = _get_price_from_quote(q)
+        if price is None:
+            print(f"  [WARN] {symbol}: no valid price in quote response", file=sys.stderr)
+            continue
+
+        rows.append(PriceSnapshotRow(symbol=symbol.upper(), price=price, as_of=now))
+
+    return rows
+
+
+def _get_tracked_symbols(db_session: object) -> list[str]:
+    """Return the PSX symbols for every company currently tracked in the DB."""
+    companies = list(db_session.execute(select(Company)).scalars().unique().all())  # type: ignore[union-attr]
+    return [c.symbol for c in companies]
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sync PSX prices from the public snapshot.")
-    parser.add_argument("--url", help="Snapshot URL (defaults to PSX_PRICE_SNAPSHOT_URL).")
-    parser.add_argument("--dump-file", help="Path to a downloaded custom-format .dmp archive.")
-    parser.add_argument("--sql-file", help="Path to pre-extracted StocksPrices plain SQL.")
-    parser.add_argument("--pg-restore", default="pg_restore", help="pg_restore binary to use.")
+    parser = argparse.ArgumentParser(
+        description="Sync PSX prices via the psxdata package.",
+    )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Parse and report without writing to the database."
+        "--dry-run",
+        action="store_true",
+        help="Fetch and print prices without writing to the database.",
     )
     return parser.parse_args(argv)
 
@@ -108,25 +99,36 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
 
-    sql_text, source = _resolve_sql(args)
-    rows = prices_module.parse_stocks_prices_dump(sql_text)
+    with SessionLocal() as db:
+        symbols = _get_tracked_symbols(db)
+
+    if not symbols:
+        print("No companies tracked — nothing to sync.")
+        return 1
+
+    print(f"Fetching quotes for {len(symbols)} tracked companies via psxdata…")
+    rows = _fetch_quotes(symbols)
+
     if not rows:
-        print("No price rows found in snapshot — nothing to sync.")
+        print("No prices fetched — nothing to sync.")
         return 1
 
     if args.dry_run:
-        print(f"Parsed {len(rows)} price rows from {source} (dry run — no changes written).")
+        print(f"Fetched {len(rows)}/{len(symbols)} prices (dry run — no changes written).")
+        for row in sorted(rows, key=lambda r: r.symbol):
+            print(f"  {row.symbol}: {row.price}")
         return 0
 
     with SessionLocal() as db:
-        result = price_sync_service.sync_prices(db, rows, source=source)
+        result = price_sync_service.sync_prices(db, rows, source="psxdata")
 
     print(
-        f"Price sync {result.status}: {result.snapshot_symbols} snapshot symbols, "
-        f"{result.matched} matched, {result.updated} updated, {result.unchanged} unchanged."
+        f"Price sync {result.status}: {result.snapshot_symbols} fetched, "
+        f"{result.matched} matched, {result.updated} updated, "
+        f"{result.unchanged} unchanged."
     )
     if result.unmatched_symbols:
-        print(f"  Unmatched (no snapshot price): {', '.join(sorted(result.unmatched_symbols))}")
+        print(f"  Unmatched (no quote returned): {', '.join(sorted(result.unmatched_symbols))}")
     return 0 if result.matched > 0 else 1
 
 

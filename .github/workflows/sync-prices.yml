@@ -1,14 +1,14 @@
 name: Sync PSX Prices
 
-# Refreshes company last-traded/closing prices from the public PSX market-data
-# snapshot (the same source psxworth publishes daily). Runs every weekday after
-# the PSX session closes so the latest available closing price is applied. The
-# sync is idempotent, so re-runs and manual triggers are safe.
+# Refreshes company last-traded prices by calling PSX directly via the
+# psxdata library.  Runs every day at 17:00 PKT (12:00 UTC) so the latest
+# closing price is captured after the PSX session ends.  The sync is
+# idempotent, so re-runs and manual triggers are safe.
 
 on:
   schedule:
-    # 12:00 UTC = 17:00 PKT, Mon–Fri — after PSX close and the daily snapshot refresh.
-    - cron: "0 12 * * 1-5"
+    # 12:00 UTC = 17:00 PKT (UTC+5), daily.
+    - cron: "0 12 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -26,8 +26,6 @@ jobs:
       # Set this repository secret to the production connection string
       # (postgresql+psycopg://user:pass@host:5432/db).
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      # Optional override; falls back to the default public snapshot URL.
-      PSX_PRICE_SNAPSHOT_URL: ${{ vars.PSX_PRICE_SNAPSHOT_URL }}
 
     steps:
       - name: Verify DATABASE_URL is configured
@@ -47,17 +45,8 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e .
+        # --pre is required because psxdata is currently a pre-release package.
+        run: pip install -e . --pre
 
-      - name: Download market-data snapshot
-        run: |
-          url="${PSX_PRICE_SNAPSHOT_URL:-https://pub-63afb24e90e0481a85914526878c4913.r2.dev/latest.dmp}"
-          curl -sSL --fail -o "$RUNNER_TEMP/psx-data.dmp" "$url"
-
-      - name: Extract StocksPrices table (pg_restore 17)
-        run: |
-          docker run --rm -v "$RUNNER_TEMP:/d" postgres:17 \
-            pg_restore --data-only --table=StocksPrices -f /d/prices.sql /d/psx-data.dmp
-
-      - name: Sync prices into the database
-        run: python -m scripts.sync_prices --sql-file "$RUNNER_TEMP/prices.sql"
+      - name: Sync prices from PSX
+        run: python -m scripts.sync_prices
