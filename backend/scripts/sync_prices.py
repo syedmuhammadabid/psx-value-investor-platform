@@ -16,6 +16,7 @@ company.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
@@ -29,12 +30,28 @@ from app.scraper.prices import PriceSnapshotRow
 from app.services import price_sync as price_sync_service
 
 
+def _strip_xd(symbol: str) -> str:
+    """Remove the ex-dividend 'XD' suffix PSX temporarily appends to a symbol."""
+    return symbol[:-2] if symbol.upper().endswith("XD") else symbol
+
+
 def _get_price_from_quote(q: object) -> Decimal | None:
-    """Extract a valid price from a psxdata quote object (Series, dict, or similar)."""
+    """Extract a valid price from a psxdata quote object.
+
+    psxdata.quote() returns a single-row DataFrame.  We squeeze it to a
+    Series with .iloc[0] so that column access yields a scalar, not another
+    Series.
+    """
+    # Single-row DataFrame → extract the row as a Series first.
+    # An empty DataFrame means psxdata found no match for that symbol.
+    if hasattr(q, "iloc") and hasattr(q, "columns"):
+        if len(q) == 0:
+            return None
+        q = q.iloc[0]  # type: ignore[assignment]
+
     raw = None
-    # Try attribute access first (dataclass / pandas Series), then item access (dict).
     if hasattr(q, "price"):
-        raw = q.price
+        raw = q.price  # type: ignore[union-attr]
     elif hasattr(q, "__getitem__"):
         try:
             raw = q["price"]  # type: ignore[index]
@@ -68,11 +85,18 @@ def _fetch_quotes(symbols: list[str]) -> list[PriceSnapshotRow]:
             print(f"  [WARN] {symbol}: quote failed — {exc}", file=sys.stderr)
             continue
 
+        # PSX temporarily appends "XD" to symbols during ex-dividend periods.
+        # If the base symbol returns no data, fall back to the XD variant.
+        if hasattr(q, "iloc") and hasattr(q, "columns") and len(q) == 0:
+            with contextlib.suppress(Exception):
+                q = psxdata.quote(symbol + "XD")
+
         price = _get_price_from_quote(q)
         if price is None:
             print(f"  [WARN] {symbol}: no valid price in quote response", file=sys.stderr)
             continue
 
+        # Always store under the clean base symbol — no XD suffix in the DB.
         rows.append(PriceSnapshotRow(symbol=symbol.upper(), price=price, as_of=now))
 
     return rows
