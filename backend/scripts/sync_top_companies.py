@@ -11,7 +11,7 @@ Usage::
     python -m scripts.sync_top_companies --dry-run  # print results only
 
 Requires a Chrome installation (uses headless mode).  ChromeDriver is
-auto-installed at runtime via ``chromedriver-autoinstaller``.
+managed automatically by Selenium Manager (bundled with Selenium 4.6+).
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
-import chromedriver_autoinstaller
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -61,7 +60,6 @@ class CompanyRow:
 
 def _build_driver() -> webdriver.Chrome:
     """Return a configured headless Chrome WebDriver."""
-    chromedriver_autoinstaller.install()
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
